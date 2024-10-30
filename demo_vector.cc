@@ -1,4 +1,4 @@
-#include "src/nn.h"
+#include "src/nn_blocks.h"
 #include <random>
 #include <iostream>
 #include <fstream>
@@ -33,14 +33,16 @@ Model create_model(nn::Graph& graph){
         &input_y
     };
 
-    auto l1 = nn::linear_layer<2, 8>(graph, input, "l1");
-    auto a1 = nn::activation_layer<8>(graph, l1.output, nn::ActivationType::Relu);
-    auto l2 = nn::linear_layer<8, 4>(graph, a1.output, "l2");
-    auto a2 = nn::activation_layer<4>(graph, l2.output, nn::ActivationType::Relu);
-    auto l3 = nn::linear_layer<4, 1>(graph, a2.output, "l3");
-    auto a3 = nn::activation_layer<1>(graph, l3.output, nn::ActivationType::Sigmoid);
+    // relu must use random initialization
+    auto l1 = nn::linear_layer<2, 8>(graph, input, "l1")
+        .radom_init().with_bias() << nn::ActivationType::Relu;
+    auto l2 = nn::linear_layer<8, 4>(graph, l1.output, "l2")
+        .radom_init().with_bias() << nn::ActivationType::Sigmoid;
+    auto l3 = nn::linear_layer<4, 4>(graph, l2.output, "l3")
+        .radom_init().with_bias() << nn::ActivationType::Relu;
+    auto l4 = nn::linear_layer<4, 1>(graph, l3.output, "l4") << nn::ActivationType::Sigmoid;
 
-    auto& prediciton = *a3.output[0];
+    auto& prediciton = *l4.output[0];
     auto& loss = (prediciton - output_aim).pow(2);
     return Model{
         &graph,
@@ -89,7 +91,7 @@ void train_step(Model& model, int n_iter, int total_iter){
         model.graph->nodes[i]->value -= lr * grad;
     }
 
-    if (n_iter % (int)1e4 == 0) {
+    if (n_iter % (int)1e3 == 0) {
         auto get_acc = [&]()->float{
             const int n_sample = 1000;
             int n_correct = 0;
@@ -119,7 +121,7 @@ int main(){
     nn::Graph graph;
 
     Model model = create_model(graph);
-    const int total_iter = 1e5;
+    const int total_iter = 1e4;
     for (int i = 0; i < total_iter; i++){
         train_step(model, i, total_iter);
     }
