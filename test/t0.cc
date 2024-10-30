@@ -13,7 +13,7 @@ void m_assert(float a, float b) {
 }
 
 void test_unary_op(Graph& g, std::function<Node*(Node*)> fn, fp_t input, fp_t expected_grad) {
-    Node& a = g.create_leaf(input);
+    Node& a = g.create_var(input);
     Node* b = fn(&a);
     g.forward();
     g.backward(b);
@@ -22,8 +22,8 @@ void test_unary_op(Graph& g, std::function<Node*(Node*)> fn, fp_t input, fp_t ex
 }
 
 void test_binary_op(Graph& g, std::function<Node*(Node*, Node*)> fn, fp_t input1, fp_t input2, fp_t expected_grad1, fp_t expected_grad2) {
-    Node& a = g.create_leaf(input1);
-    Node& b = g.create_leaf(input2);
+    Node& a = g.create_var(input1);
+    Node& b = g.create_var(input2);
     Node* c = fn(&a, &b);
     g.forward();
     g.backward(c);

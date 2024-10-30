@@ -41,8 +41,8 @@ int main(){
         fp_t a, fp_t b, fp_t expected_a, fp_t expected_b
         ){
         Graph graph;
-        auto& na = graph.create_leaf(a, "a");
-        auto& nb = graph.create_leaf(b, "b");
+        auto& na = graph.create_var(a, "a");
+        auto& nb = graph.create_var(b, "b");
         auto& result = f(na, nb);
         graph.forward();
         graph.backward(&result);
