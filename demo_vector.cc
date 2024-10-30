@@ -1,4 +1,4 @@
-#include "src/nn_vector.h"
+#include "src/nn.h"
 #include <random>
 #include <iostream>
 #include <fstream>
@@ -33,12 +33,12 @@ Model create_model(nn::Graph& graph){
         &input_y
     };
 
-    auto l1 = nn::create_linear_layer<2, 8>(graph, input, "l1");
-    auto a1 = nn::create_activation_layer<8>(graph, l1.output, nn::ActivationType::Relu);
-    auto l2 = nn::create_linear_layer<8, 4>(graph, a1.output, "l2");
-    auto a2 = nn::create_activation_layer<4>(graph, l2.output, nn::ActivationType::Relu);
-    auto l3 = nn::create_linear_layer<4, 1>(graph, a2.output, "l3");
-    auto a3 = nn::create_activation_layer<1>(graph, l3.output, nn::ActivationType::Sigmoid);
+    auto l1 = nn::linear_layer<2, 8>(graph, input, "l1");
+    auto a1 = nn::activation_layer<8>(graph, l1.output, nn::ActivationType::Relu);
+    auto l2 = nn::linear_layer<8, 4>(graph, a1.output, "l2");
+    auto a2 = nn::activation_layer<4>(graph, l2.output, nn::ActivationType::Relu);
+    auto l3 = nn::linear_layer<4, 1>(graph, a2.output, "l3");
+    auto a3 = nn::activation_layer<1>(graph, l3.output, nn::ActivationType::Sigmoid);
 
     auto& prediciton = *a3.output[0];
     auto& loss = (prediciton - output_aim).pow(2);
