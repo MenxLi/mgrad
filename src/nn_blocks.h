@@ -59,7 +59,10 @@ struct LinearLayer {
     }
 
     LinearLayer radom_init() {
-        auto rnd = [](){ return (rand() % 1000) / 1000.0; };
+        auto rnd = [](){ 
+            auto uniform_one = (rand() % 1000) / 1000.0; 
+            return uniform_one * 2 - 1;
+            };
 
         for (size_t i = 0; i < N_out; i++) {
             for (size_t j = 0; j < N_in; j++) {

@@ -4,15 +4,28 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include <tuple>
 
-// The aimed function: f(x,y) = (x^2 + 2y^2 + 1.25xy - 1) > 0
-// should be a small ellipse
-std::default_random_engine generator(time(0));
-std::normal_distribution<float> sample_distribution(0, 3);
-float aim(float x, float y){
-    float z = x*x + 2*y*y + 1.25*x*y - 1;
-    return z < 0 ? 1 : 0;
+// a square function on zero level set
+float aim_levelset(float x, float y){
+    return std::cos(x) + std::sin(y);
 };
+
+std::default_random_engine generator(time(0));
+std::uniform_real_distribution<float> sample_distribution(-5, 5);
+template <size_t N>
+std::array<std::tuple<float, float, float>, N> get_sample(){
+    std::array<std::tuple<float, float, float>, N> samples;
+    for (size_t i = 0; i < N; i++){
+        auto x = sample_distribution(generator);
+        auto y = sample_distribution(generator);
+        // take zero level set as classification
+        auto z_raw = aim_levelset(x, y);
+        auto z = static_cast<float>(z_raw < 0);
+        samples[i] = std::make_tuple(x, y, z);
+    }
+    return samples;
+}
 
 struct Model{
     nn::Graph* graph;
@@ -21,26 +34,6 @@ struct Model{
     nn::Node* aim;
     nn::Node* prediciton;
     nn::Node* loss;
-};
-
-// define a function to get accuracy
-auto get_acc = [](Model& model)->float{
-    const int n_sample = 1000;
-    int n_correct = 0;
-    for (int i = 0; i < n_sample; i++){
-        float x = sample_distribution(generator);
-        float y = sample_distribution(generator);
-        float z = aim(x, y);
-        model.input_x->value = x;
-        model.input_y->value = y;
-        model.aim->value = z;
-        model.graph->forward();
-        if (model.prediciton->value > 0.5 == z > 0.5){
-            n_correct++;
-        }
-    }
-    model.graph->clear_grad();
-    return n_correct * 1.0 / n_sample;
 };
 
 // build a simple neural network
@@ -55,17 +48,17 @@ Model create_model(nn::Graph& graph){
         &input_y
     };
 
+    const int w = 4;
     // relu must use random initialization
-    auto l1 = nn::linear_layer<2, 4>(graph, input, "l1")
+    auto l1 = nn::linear_layer<2, w*2>(graph, input, "l1")
         .radom_init().with_bias() << nn::ActivationType::Relu;
-    auto l2 = nn::linear_layer<4, 4>(graph, l1.output, "l2")
-        .radom_init() << nn::ActivationType::Sigmoid;
-    auto l3 = nn::linear_layer<4, 4>(graph, l2.output, "l3")
+    auto l2 = nn::linear_layer<w*2, w>(graph, l1.output, "l2")
         .radom_init().with_bias() << nn::ActivationType::Relu;
-    auto l4 = nn::linear_layer<4, 1>(graph, l3.output, "l4") 
-        .radom_init() << nn::ActivationType::Sigmoid;
+    auto l3 = nn::linear_layer<w, 1>(graph, l2.output, "l3")
+        .radom_init().with_bias() << nn::ActivationType::Sigmoid;
 
-    auto& prediciton = *l4.output[0];
+    auto& prediciton = *l3.output[0];
+    prediciton.name = "prediction";
     auto& loss = (prediciton - output_aim).pow(2);
     return Model{
         &graph,
@@ -77,46 +70,56 @@ Model create_model(nn::Graph& graph){
     };
 }
 
-void train_step(Model& model, int n_iter, int total_iter){
-    // one cycle lr
-    const float base_lr = 1e-3;
-    float lr = base_lr * (
-        1 - std::abs(n_iter * 2.0 / total_iter - 1)
-    );
-    const int batch_size = 32;
+auto get_acc = [](Model& model)->float{
+    int n_correct = 0;
+    auto samples = get_sample<300>();
+    for (auto [x, y, z] : samples){
+        model.input_x->value = x;
+        model.input_y->value = y;
+        model.aim->value = z;
+        model.graph->forward();
+        if (model.prediciton->value > 0.5 == z > 0.5){
+            n_correct++;
+        }
+    }
+    model.graph->clear_grad();
+    return n_correct * 1.0 / 300;
+};
 
-    // keep a record of gradients, for the sake of batch gradient descent
-    std::vector<nn::fp_t> grads = std::vector<nn::fp_t>(model.graph->nodes.size(), 0);
+void train_step(Model& model, int n_iter, int total_iter){
+    const float lr = 1e-2;
+    const int batch_size = 64;
+
     nn::fp_t loss = 0;
-    for (int i = 0; i < batch_size; i++){
-        float x = sample_distribution(generator);
-        float y = sample_distribution(generator);
-        float z = aim(x, y);
+    std::vector<nn::fp_t> grad_sums = std::vector<nn::fp_t>(model.graph->nodes.size(), 0);
+    auto samples = get_sample<batch_size>();
+    for (auto [x, y, z] : samples){
         model.input_x->value = x;
         model.input_y->value = y;
         model.aim->value = z;
         model.graph->forward();
         model.graph->backward(model.loss);
+
         for (std::size_t i = 0; i < model.graph->nodes.size(); i++){
-            grads[i] += model.graph->nodes[i]->grad;
+            const nn::fp_t threshold = 1e5;
+            grad_sums[i] += model.graph->nodes[i]->grad;
+            if (grad_sums[i] > threshold) grad_sums[i] = threshold;
+            if (grad_sums[i] < -threshold) grad_sums[i] = -threshold;
         }
         loss += model.loss->value;
         model.graph->clear_grad();
     }
 
-    // batch averaging and gradient clipping
     for (std::size_t i = 0; i < model.graph->nodes.size(); i++){
         if (!model.graph->nodes[i]->requires_grad) continue;
-        auto grad = grads[i] / batch_size;
-        const float threshold = 1;
-        if (grad > threshold) grad = threshold;
-        if (grad < -threshold) grad = -threshold;
+        auto grad = grad_sums[i] / batch_size;
         model.graph->nodes[i]->value -= lr * grad;
     }
 
-    if (n_iter % (int)1e3 == 0) {
-        std::cout << "iter: " << n_iter << ", loss: " << loss / batch_size 
-        << ", acc: " << get_acc(model) << std::endl;
+    if ((n_iter + 1) % (int)1e3 == 0) {
+        std::cout << "Iteration [" << n_iter + 1 << "/" << total_iter << "]"
+        << " loss: " << loss / batch_size 
+        << ", acc: " << get_acc(model) << ", lr: " << lr << std::endl;
     }
     model.graph->clear_grad();
 }
@@ -125,17 +128,17 @@ int main(){
     nn::Graph graph;
 
     Model model = create_model(graph);
-    const int total_iter = 1e4;
+    const int total_iter = 5e4;
     for (int i = 0; i < total_iter; i++){
         train_step(model, i, total_iter);
     }
 
-    std::cout << "final loss: " << model.loss->value << std::endl;
+    std::cout << "final loss: " << model.loss->value << ", acc: " << get_acc(model) << std::endl;
 
     // input a simple value and save the graph
     model.input_x->value = 1;
     model.input_y->value = 2;
-    model.aim->value = aim(1, 2);
+    model.aim->value = aim_levelset(1, 2);
     model.graph->forward();
 
     std::ofstream ofs("model.mermaid");
