@@ -1,0 +1,6 @@
+bin
+compile_flags.txt
+*.mermaid
+*.out
+*.exe
+.DS_Store
