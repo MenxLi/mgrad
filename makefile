@@ -1,7 +1,7 @@
 
 CXX_FLAGS = -std=c++17 -Wall -Isrc
 
-LIB_STEMS = graph ops
+LIB_STEMS = nn_graph nn_ops
 OBJS = $(addprefix bin/, $(addsuffix .o, $(LIB_STEMS)))
 
 .PHONY: test

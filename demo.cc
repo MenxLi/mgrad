@@ -28,18 +28,18 @@ struct Model{
 // a simple quadratic function fit
 Model create_model(nn::Graph& graph){
     // names are optional, but useful for visualization
-    nn::Node& input_x = graph.create_const(0, "x");
-    nn::Node& input_y = graph.create_const(0, "y");
-    nn::Node& aim = graph.create_const(0, "aim");
+    auto& input_x = graph.create_const(0, "x");
+    auto& input_y = graph.create_const(0, "y");
+    auto& aim = graph.create_const(0, "aim");
 
-    nn::Node& a = graph.create_var(0, "a");
-    nn::Node& b = graph.create_var(0, "b");
-    nn::Node& c = graph.create_var(0, "c");
-    nn::Node& d = graph.create_var(0, "d");
-    nn::Node& e = graph.create_var(0, "e");
-    nn::Node& f = graph.create_var(0, "f");
-    nn::Node& pred = a * input_x.pow(2) + b * input_y.pow(2) + c * input_x * input_y + d * input_x + e * input_y + f;
-    nn::Node& loss = (pred - aim).abs();
+    auto& a = graph.create_var(0, "a");
+    auto& b = graph.create_var(0, "b");
+    auto& c = graph.create_var(0, "c");
+    auto& d = graph.create_var(0, "d");
+    auto& e = graph.create_var(0, "e");
+    auto& f = graph.create_var(0, "f");
+    auto& pred = a * input_x.pow(2) + b * input_y.pow(2) + c * input_x * input_y + d * input_x + e * input_y + f;
+    auto& loss = (pred - aim).abs();
     pred.name = "pred"; 
     loss.name = "loss";
     return Model{&graph, &input_x, &input_y, &aim, &pred, &loss, {&a, &b, &c, &d, &e, &f}};
