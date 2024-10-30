@@ -47,7 +47,7 @@ struct Graph {
     void backward(Node* node);
     void clear_grad();
 
-    Node& create_leaf(fp_t value, std::string name = "");
+    Node& create_var(fp_t value, std::string name = "");
     Node& create_const(fp_t value, std::string name = "");
     Node* add(Node* a, Node* b);
     Node* sub(Node* a, Node* b);

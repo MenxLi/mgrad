@@ -5,7 +5,6 @@ namespace nn {
 
 fp_t OpNode::root_grad() { return output == nullptr ? 1 : output->grad; }
 
-// add
 void OpAdd::forward() {
     output->value = inputs[0]->value + inputs[1]->value;
 }
@@ -15,7 +14,6 @@ void OpAdd::backward() {
     if (inputs[1]->requires_grad) inputs[1]->grad += grad;
 }
 
-// subtract
 void OpSub::forward() {
     output->value = inputs[0]->value - inputs[1]->value;
 }
@@ -25,7 +23,6 @@ void OpSub::backward() {
     if (inputs[1]->requires_grad) inputs[1]->grad -= grad;    // -1 * grad
 }
 
-// multiply
 void OpMult::forward() {
     output->value = inputs[0]->value * inputs[1]->value;
 }
@@ -35,7 +32,6 @@ void OpMult::backward() {
     if (inputs[1]->requires_grad) inputs[1]->grad += grad * inputs[0]->value;
 }
 
-// divide
 // f(x) = a / b -> ∂f/∂a = 1 / b, ∂f/∂b = -a / b^2
 void OpDiv::forward() {
     output->value = inputs[0]->value / inputs[1]->value;
@@ -57,7 +53,6 @@ void OpPow::backward() {
     if (inputs[1]->requires_grad) inputs[1]->grad += grad * pow(inputs[0]->value, inputs[1]->value) * log(inputs[0]->value);
 }
 
-// minus
 void OpMinus::forward() {
     output->value = -inputs[0]->value;
 }
@@ -66,7 +61,6 @@ void OpMinus::backward() {
     if (inputs[0]->requires_grad) inputs[0]->grad -= grad;
 }
 
-// inverse
 // f(x) = 1 / a -> ∂f/∂a = -1 / a^2
 void OpInv::forward() {
     output->value = 1 / inputs[0]->value;
@@ -76,7 +70,6 @@ void OpInv::backward() {
     if (inputs[0]->requires_grad) inputs[0]->grad -= grad / (inputs[0]->value * inputs[0]->value);
 }
 
-// Abs
 void OpAbs::forward() {
     output->value = std::abs(inputs[0]->value);
 }
@@ -85,7 +78,6 @@ void OpAbs::backward() {
     if (inputs[0]->requires_grad) inputs[0]->grad += grad * (inputs[0]->value > 0 ? 1 : -1);
 }
 
-// relu
 void OpRelu::forward() {
     output->value = inputs[0]->value > 0 ? inputs[0]->value : 0;
 }
@@ -94,7 +86,6 @@ void OpRelu::backward() {
     if (inputs[0]->requires_grad) inputs[0]->grad += grad * (inputs[0]->value > 0 ? 1 : 0);
 }
 
-// sigmoid
 // f(x) = 1 / (1 + exp(-x)) -> ∂f/∂x = f(x) * (1 - f(x))
 void OpSigmoid::forward() {
     output->value = 1 / (1 + exp(-inputs[0]->value));

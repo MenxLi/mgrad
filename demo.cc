@@ -5,7 +5,7 @@
 #include <ctime>
 
 // The aimed function: f(x,y) = x^2 + 2y^2 + 1.25xy - 1
-const float perterb = 1e-3;
+const float perterb = 0.1;
 std::default_random_engine generator(time(0));
 std::normal_distribution<float> sample_distribution(0, 2);
 std::normal_distribution<float> eps_distribution(0, perterb);
@@ -27,18 +27,21 @@ struct Model{
 
 // a simple quadratic function fit
 Model create_model(nn::Graph& graph){
+    // names are optional, but useful for visualization
     nn::Node& input_x = graph.create_const(0, "x");
     nn::Node& input_y = graph.create_const(0, "y");
-    nn::Node& aim = graph.create_const(0, "z");
+    nn::Node& aim = graph.create_const(0, "aim");
 
-    nn::Node& a = graph.create_leaf(0, "a");
-    nn::Node& b = graph.create_leaf(0, "b");
-    nn::Node& c = graph.create_leaf(0, "c");
-    nn::Node& d = graph.create_leaf(0, "d");
-    nn::Node& e = graph.create_leaf(0, "e");
-    nn::Node& f = graph.create_leaf(0, "f");
+    nn::Node& a = graph.create_var(0, "a");
+    nn::Node& b = graph.create_var(0, "b");
+    nn::Node& c = graph.create_var(0, "c");
+    nn::Node& d = graph.create_var(0, "d");
+    nn::Node& e = graph.create_var(0, "e");
+    nn::Node& f = graph.create_var(0, "f");
     nn::Node& pred = a * input_x.pow(2) + b * input_y.pow(2) + c * input_x * input_y + d * input_x + e * input_y + f;
     nn::Node& loss = (pred - aim).abs();
+    pred.name = "pred"; 
+    loss.name = "loss";
     return Model{&graph, &input_x, &input_y, &aim, &pred, &loss, {&a, &b, &c, &d, &e, &f}};
 }
 
@@ -58,13 +61,6 @@ void train_step(Model& model, int n_iter, int total_iter){
     model.graph->forward();
     model.graph->backward(model.loss);
 
-    // clip the gradient
-    for (nn::Node* node: model.params){
-        if (node->grad > 1e4) node->grad = 1e4;
-        if (node->grad < -1e4) node->grad = -1e4;
-    }
-
-    // update weights
     for (nn::Node* node: model.graph->nodes){
         if (node->requires_grad){
             node->value -= lr * node->grad;
@@ -94,6 +90,12 @@ int main(){
         })(node->value) << " ";
     }
     std::cout << std::endl;
+
+    // input a simple value and save the graph
+    model.input_x->value = 1;
+    model.input_y->value = 2;
+    model.aim->value = aim(1, 2);
+    model.graph->forward();
 
     std::ofstream ofs("model.mermaid");
     ofs << graph.to_mermaid();

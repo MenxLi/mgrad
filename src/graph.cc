@@ -6,6 +6,18 @@
 
 namespace nn {
 
+// create a new leaf node
+Node& Graph::create_var(fp_t value, std::string name) {
+    Node* node = new Node(this, name, value);
+    nodes.push_back(node);
+    return *node;
+}
+Node& Graph::create_const(fp_t value, std::string name) {
+    Node& node = create_var(value, name);
+    node.requires_grad = false;
+    return node;
+}
+
 #define IMPL_GRAPH_OP1(OP) \
     Op##OP* op = new Op##OP(); \
     Node* node = new Node(this); \
@@ -26,16 +38,6 @@ namespace nn {
     nodes.push_back(node); \
     return node; \
 
-Node& Graph::create_leaf(fp_t value, std::string name) {
-    Node* node = new Node(this, name, value);
-    nodes.push_back(node);
-    return *node;
-}
-Node& Graph::create_const(fp_t value, std::string name) {
-    Node& node = create_leaf(value, name);
-    node.requires_grad = false;
-    return node;
-}
 Node* Graph::add(Node* a, Node* b) { IMPL_GRAPH_OP2(Add) }
 Node* Graph::sub(Node* a, Node *b) { IMPL_GRAPH_OP2(Sub) }
 Node* Graph::mul(Node* a, Node* b) { IMPL_GRAPH_OP2(Mult) }
@@ -48,26 +50,12 @@ Node* Graph::relu(Node* a) { IMPL_GRAPH_OP1(Relu) }
 Node* Graph::sigmoid(Node* a) { IMPL_GRAPH_OP1(Sigmoid) }
 
 Graph::~Graph() {
-    for (Node* node: nodes) {
-        delete node;
-    }
-    for (OpNode* op: ops) {
-        delete op;
-    }
+    for (Node* node: nodes) { delete node; }
+    for (OpNode* op: ops) { delete op; }
 }
 
-void Graph::clear_grad() {
-    for (Node* node: nodes) {
-        node->grad = 0;
-    }
-}
-
-void Graph::forward() {
-    for (OpNode* op: ops) {
-        op->forward();
-    }
-}
-
+void Graph::clear_grad() { for (Node* node: nodes) { node->grad = 0; } }
+void Graph::forward() { for (OpNode* op: ops) { op->forward(); } }
 void Graph::backward(Node* node) {
     assert(node->op != nullptr);
     node->grad = 1;
@@ -81,7 +69,6 @@ std::string node_id(Node* node) { return std::to_string((size_t)node); }
 std::string node_id(OpNode* op) { return std::to_string((size_t)op); }
 std::string Graph::to_mermaid() {
     std::string t = "graph TD;\n";
-
     auto create_node = [&t](Node* node) {
         std::stringstream ss;
         if (node->name != "") {
@@ -113,7 +100,6 @@ std::string Graph::to_mermaid() {
         }
         t += op_id + " --> " + node_id(op->output) + "\n";
     }
-
     return t;
 }
 }
