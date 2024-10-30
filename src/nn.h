@@ -32,11 +32,14 @@ DECLEAR_OP(Sub)
 DECLEAR_OP(Mult)
 DECLEAR_OP(Div)
 DECLEAR_OP(Pow)
+DECLEAR_OP(Log)
 DECLEAR_OP(Minus)    // unary minus
 DECLEAR_OP(Inv)      // unary inverse
 DECLEAR_OP(Abs)
 DECLEAR_OP(Relu)
 DECLEAR_OP(Sigmoid)
+DECLEAR_OP(Sin)
+DECLEAR_OP(Cos)
 
 struct Graph {
 
@@ -55,12 +58,16 @@ struct Graph {
     Node* div(Node* a, Node* b);
     Node* pow(Node* a, Node* b);
 
+    Node* log(Node* a);
     Node* minus(Node* a);
     Node* inv(Node* a);
     Node* abs(Node* a);
 
     Node* relu(Node* a);
     Node* sigmoid(Node* a);
+
+    Node* sin(Node* a);
+    Node* cos(Node* a);
 
     std::string to_mermaid();
 };
@@ -86,9 +93,12 @@ struct Node {
 
     Node& pow(Node& b) { return *graph->pow(this, &b); }
     Node& pow(fp_t b) { return *graph->pow(this, &graph->create_const(b)); }
+    Node& log() { return *graph->log(this); }
     Node& abs() { return *graph->abs(this); }
     Node& relu() { return *graph->relu(this); }
     Node& sigmoid() { return *graph->sigmoid(this); }
+    Node& sin() { return *graph->sin(this); }
+    Node& cos() { return *graph->cos(this); }
 
 private:
     Node(const Node& b) = delete;

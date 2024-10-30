@@ -63,6 +63,18 @@ void t0() {
         g, [&g](Node* n) { return g.abs(n) ; },
         -2, -1
     );
+    test_unary_op(
+        g, [&g](Node* n) { return g.log(n); },
+        2, 0.5
+    );
+    test_unary_op(
+        g, [&g](Node* n) { return g.sin(n); },
+        2, -0.4161468365471424
+    );
+    test_unary_op(
+        g, [&g](Node* n) { return g.cos(n); },
+        2, -0.9092974268256817
+    );
 
     test_binary_op(
         g, [&g](Node* a, Node* b) { return g.add(a, b); },

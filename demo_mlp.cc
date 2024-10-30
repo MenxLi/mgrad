@@ -12,10 +12,10 @@ float aim_levelset(float x, float y){
 };
 
 std::default_random_engine generator(time(0));
-std::uniform_real_distribution<float> sample_distribution(-5, 5);
 template <size_t N>
 std::array<std::tuple<float, float, float>, N> get_sample(){
     std::array<std::tuple<float, float, float>, N> samples;
+    std::uniform_real_distribution<float> sample_distribution(-5, 5);
     for (size_t i = 0; i < N; i++){
         auto x = sample_distribution(generator);
         auto y = sample_distribution(generator);
@@ -59,14 +59,15 @@ Model create_model(nn::Graph& graph){
 
     auto& prediciton = *l3.output[0];
     prediciton.name = "prediction";
-    auto& loss = (prediciton - output_aim).pow(2);
+    auto& bce_loss = -output_aim * prediciton.log() - (1 - output_aim) * (1 - prediciton).log();
+
     return Model{
         &graph,
         &input_x,
         &input_y,
         &output_aim,
         &prediciton,
-        &loss
+        &bce_loss
     };
 }
 
@@ -99,12 +100,8 @@ void train_step(Model& model, int n_iter, int total_iter){
         model.aim->value = z;
         model.graph->forward();
         model.graph->backward(model.loss);
-
         for (std::size_t i = 0; i < model.graph->nodes.size(); i++){
-            const nn::fp_t threshold = 1e5;
             grad_sums[i] += model.graph->nodes[i]->grad;
-            if (grad_sums[i] > threshold) grad_sums[i] = threshold;
-            if (grad_sums[i] < -threshold) grad_sums[i] = -threshold;
         }
         loss += model.loss->value;
         model.graph->clear_grad();
@@ -112,14 +109,16 @@ void train_step(Model& model, int n_iter, int total_iter){
 
     for (std::size_t i = 0; i < model.graph->nodes.size(); i++){
         if (!model.graph->nodes[i]->requires_grad) continue;
+        const nn::fp_t clip_threshold = 1e3;
         auto grad = grad_sums[i] / batch_size;
+        if (grad > clip_threshold) grad = clip_threshold;
+        if (grad < -clip_threshold) grad = -clip_threshold;
         model.graph->nodes[i]->value -= lr * grad;
     }
 
     if ((n_iter + 1) % (int)1e3 == 0) {
         std::cout << "Iteration [" << n_iter + 1 << "/" << total_iter << "]"
-        << " loss: " << loss / batch_size 
-        << ", acc: " << get_acc(model) << ", lr: " << lr << std::endl;
+        << "\t loss: " << loss / batch_size << std::endl;
     }
     model.graph->clear_grad();
 }

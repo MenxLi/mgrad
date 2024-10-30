@@ -42,7 +42,6 @@ void OpDiv::backward() {
     if (inputs[1]->requires_grad) inputs[1]->grad -= grad * inputs[0]->value / (inputs[1]->value * inputs[1]->value);
 }
 
-// power
 // f(x) = a^b -> ∂f/∂a = b * a^(b-1), ∂f/∂b = a^b * log(a)
 void OpPow::forward() {
     output->value = pow(inputs[0]->value, inputs[1]->value);
@@ -51,6 +50,15 @@ void OpPow::backward() {
     fp_t grad = root_grad(); if (grad == 0) return;
     if (inputs[0]->requires_grad) inputs[0]->grad += grad * inputs[1]->value * pow(inputs[0]->value, inputs[1]->value - 1);
     if (inputs[1]->requires_grad) inputs[1]->grad += grad * pow(inputs[0]->value, inputs[1]->value) * log(inputs[0]->value);
+}
+
+// f(x) = log(a) -> ∂f/∂a = 1 / a
+void OpLog::forward() {
+    output->value = std::log(inputs[0]->value);
+}
+void OpLog::backward() {
+    fp_t grad = root_grad(); if (grad == 0) return;
+    if (inputs[0]->requires_grad) inputs[0]->grad += grad / inputs[0]->value;
 }
 
 void OpMinus::forward() {
@@ -94,6 +102,24 @@ void OpSigmoid::backward() {
     fp_t grad = root_grad(); if (grad == 0) return;
     fp_t s = output->value;
     if (inputs[0]->requires_grad) inputs[0]->grad += grad * s * (1 - s);
+}
+
+// f(x) = sin(x) -> ∂f/∂x = cos(x)
+void OpSin::forward() {
+    output->value = sin(inputs[0]->value);
+}
+void OpSin::backward() {
+    fp_t grad = root_grad(); if (grad == 0) return;
+    if (inputs[0]->requires_grad) inputs[0]->grad += grad * cos(inputs[0]->value);
+}
+
+// f(x) = cos(x) -> ∂f/∂x = -sin(x)
+void OpCos::forward() {
+    output->value = cos(inputs[0]->value);
+}
+void OpCos::backward() {
+    fp_t grad = root_grad(); if (grad == 0) return;
+    if (inputs[0]->requires_grad) inputs[0]->grad -= grad * sin(inputs[0]->value);
 }
 
 }
