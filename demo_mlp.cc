@@ -51,11 +51,11 @@ Model create_model(nn::Graph& graph){
     const int w = 4;
     // relu must use random initialization
     auto l1 = nn::linear_layer<2, w*2>(graph, input, "l1")
-        .radom_init().with_bias() << nn::ActivationType::Relu;
+        .random_init().with_bias() << nn::ActivationType::Relu;
     auto l2 = nn::linear_layer<w*2, w>(graph, l1.output, "l2")
-        .radom_init().with_bias() << nn::ActivationType::Relu;
+        .random_init().with_bias() << nn::ActivationType::Relu;
     auto l3 = nn::linear_layer<w, 1>(graph, l2.output, "l3")
-        .radom_init().with_bias() << nn::ActivationType::Sigmoid;
+        .random_init().with_bias() << nn::ActivationType::Sigmoid;
 
     auto& prediciton = *l3.output[0];
     prediciton.name = "prediction";

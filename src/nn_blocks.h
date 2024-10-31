@@ -58,10 +58,17 @@ struct LinearLayer {
         return *this;
     }
 
-    LinearLayer radom_init() {
-        auto rnd = [](){ 
-            auto uniform_one = (rand() % 1000) / 1000.0; 
-            return uniform_one * 2 - 1;
+    // variance only applies to normal distribution
+    LinearLayer random_init(fp_t scale = 1, bool normal_dist = true, fp_t variance = 1) {
+        auto rnd = [&scale, &normal_dist, &variance](){ 
+            const fp_t PI = 3.14159265358979323846;
+            auto uniform_one = static_cast<fp_t>((rand() % 10000) / 10000.0); 
+            auto v = scale * (uniform_one * 2 - 1);
+            if (normal_dist) {
+                v = ( 1 / std::sqrt(2 * PI * std::pow(variance, 2)) ) 
+                    * std::exp(-std::pow(v, 2) / (2 * std::pow(variance, 2)));
+            }
+            return v;
             };
 
         for (size_t i = 0; i < N_out; i++) {
