@@ -49,6 +49,7 @@ Node* Graph::inv(Node* a) { IMPL_GRAPH_OP1(Inv) }
 Node* Graph::abs(Node* a) { IMPL_GRAPH_OP1(Abs) }
 Node* Graph::relu(Node* a) { IMPL_GRAPH_OP1(Relu) }
 Node* Graph::sigmoid(Node* a) { IMPL_GRAPH_OP1(Sigmoid) }
+Node* Graph::tanh(Node* a) { IMPL_GRAPH_OP1(Tanh) }
 Node* Graph::sin(Node* a) { IMPL_GRAPH_OP1(Sin) }
 Node* Graph::cos(Node* a) { IMPL_GRAPH_OP1(Cos) }
 

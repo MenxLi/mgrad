@@ -104,6 +104,16 @@ void OpSigmoid::backward() {
     if (inputs[0]->requires_grad) inputs[0]->grad += grad * s * (1 - s);
 }
 
+// f(x) = tanh(x) -> ∂f/∂x = 1 - f(x)^2
+void OpTanh::forward() {
+    output->value = std::tanh(inputs[0]->value);
+}
+void OpTanh::backward() {
+    fp_t grad = root_grad(); if (grad == 0) return;
+    fp_t t = output->value;
+    if (inputs[0]->requires_grad) inputs[0]->grad += grad * (1 - t * t);
+}
+
 // f(x) = sin(x) -> ∂f/∂x = cos(x)
 void OpSin::forward() {
     output->value = sin(inputs[0]->value);

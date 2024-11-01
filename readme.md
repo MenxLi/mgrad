@@ -8,7 +8,7 @@ Two demos are provided:
 
 Use the following command to compile and run the demos:
 ```sh
-g++ -std=c++11 -O3 src/*.cc demo.cc
+g++ -std=c++17 -O3 src/*.cc demo.cc
 ./a.out
 ```
 

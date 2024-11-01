@@ -1,5 +1,6 @@
 #pragma once
 #include "nn.h"
+#include <cmath>
 
 namespace nn{
 
@@ -8,6 +9,7 @@ namespace nn{
 enum class ActivationType {
     Relu,
     Sigmoid,
+    Tanh,
 };
 
 template <size_t N>
@@ -30,6 +32,9 @@ ActivationLayer<N> activation_layer(
                 break;
             case ActivationType::Sigmoid:
                 layer.output[i] = graph.sigmoid(input[i]);
+                break;
+            case ActivationType::Tanh:
+                layer.output[i] = graph.tanh(input[i]);
                 break;
             default:
                 assert(false);

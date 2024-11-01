@@ -38,6 +38,7 @@ DECLEAR_OP(Inv)      // unary inverse
 DECLEAR_OP(Abs)
 DECLEAR_OP(Relu)
 DECLEAR_OP(Sigmoid)
+DECLEAR_OP(Tanh)
 DECLEAR_OP(Sin)
 DECLEAR_OP(Cos)
 
@@ -65,6 +66,7 @@ struct Graph {
 
     Node* relu(Node* a);
     Node* sigmoid(Node* a);
+    Node* tanh(Node* a);
 
     Node* sin(Node* a);
     Node* cos(Node* a);
@@ -97,6 +99,7 @@ struct Node {
     Node& abs() { return *graph->abs(this); }
     Node& relu() { return *graph->relu(this); }
     Node& sigmoid() { return *graph->sigmoid(this); }
+    Node& tanh() { return *graph->tanh(this); }
     Node& sin() { return *graph->sin(this); }
     Node& cos() { return *graph->cos(this); }
 
