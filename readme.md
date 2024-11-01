@@ -1,5 +1,5 @@
 
-A minimal automatic differentiation library, just for fun...
+A minimal automatic differentiation library, just for fun...  
 In 300 lines of code (`src/nn.h` and `src/*.cc`), no dependencies. 
 
 Two demos are provided: 
