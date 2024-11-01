@@ -17,8 +17,7 @@ int main(){
 
     auto& e = c + (d - 1);
 
-    // e = (2a + b) + (a * b - 1)
-    // -> ∂e/∂a = 2 + b, ∂e/∂b = 1 + a
+    // e = (2a + b) + (a * b - 1) -> ∂e/∂a = 2 + b, ∂e/∂b = 1 + a
     graph.forward();
     graph.backward(&e);
 
@@ -26,6 +25,7 @@ int main(){
     ASSERT(b.grad == 1 + a.value);
 
     // save the computation graph to mermaid format
+    // you may visualize it using: https://mermaid.live/
     std::ofstream file("model.mermaid");
     file << graph.to_mermaid();
     file.close();
