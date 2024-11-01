@@ -67,13 +67,13 @@ Model create_model(nn::Graph& graph){
 
     const int w = 8;
     auto l1 = nn::linear_layer<2, 2*w>(graph, input, "l1")
-        .with_bias().random_init() << nn::ActivationType::Tanh;
+        .with_bias().normal_init() << nn::ActivationType::Tanh;
     auto l2 = nn::linear_layer<2*w, w>(graph, l1.output, "l2")
-        .with_bias().random_init() << nn::ActivationType::Relu;
+        .with_bias().normal_init() << nn::ActivationType::Relu;
     auto l3 = nn::linear_layer<w, w>(graph, l2.output, "l3")
-        .with_bias().random_init() << nn::ActivationType::Relu;
+        .with_bias().normal_init() << nn::ActivationType::Relu;
     auto l4 = nn::linear_layer<w, 1>(graph, l3.output, "l4")
-        .with_bias().random_init() << nn::ActivationType::Sigmoid;
+        .with_bias().normal_init() << nn::ActivationType::Sigmoid;
 
     auto& prediciton = *l4.output[0];
     prediciton.name = "prediction";
@@ -107,8 +107,8 @@ auto get_acc = [](Model& model)->float{
 };
 
 void train_step(Model& model, int n_iter, int total_iter){
-    const float lr = 1e-2;
-    const int batch_size = 16;
+    float lr = 1e-2;
+    const int batch_size = 32;
 
     fp_t loss = 0;
     std::vector<fp_t> grad_sums = std::vector<fp_t>(model.graph->nodes.size(), 0);
@@ -147,25 +147,13 @@ int main(){
     nn::Graph graph;
 
     Model model = create_model(graph);
-    const int total_iter = 1e5;
+    const int total_iter = 8e4;
     for (int i = 0; i < total_iter; i++){
         train_step(model, i, total_iter);
     }
-
     std::cout << "final loss: " << model.loss->value << ", acc: " << get_acc(model) << std::endl;
 
     save_bitmap(model);
-
-    // input a simple value and save the graph
-    model.input_x->value = 1;
-    model.input_y->value = 2;
-    model.aim->value = aim_levelset(1, 2);
-    model.graph->forward();
-
-    std::ofstream ofs("model.mermaid");
-    ofs << graph.to_mermaid();
-    ofs.close();
-    
     return 0;
 }
 

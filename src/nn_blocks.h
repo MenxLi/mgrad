@@ -1,5 +1,6 @@
 #pragma once
 #include "nn.h"
+#include <random>
 #include <cmath>
 
 namespace nn{
@@ -64,26 +65,19 @@ struct LinearLayer {
     }
 
     // variance only applies to normal distribution
-    LinearLayer random_init(fp_t scale = 1, bool normal_dist = true, fp_t variance = 1) {
-        auto rnd = [&scale, &normal_dist, &variance](){ 
-            const fp_t PI = 3.14159265358979323846;
-            auto uniform_one = static_cast<fp_t>((rand() % 10000) / 10000.0); 
-            auto v = scale * (uniform_one * 2 - 1);
-            if (normal_dist) {
-                v = ( 1 / std::sqrt(2 * PI * std::pow(variance, 2)) ) 
-                    * std::exp(-std::pow(v, 2) / (2 * std::pow(variance, 2)));
-            }
-            return v;
-            };
+    LinearLayer normal_init(fp_t mean = true, fp_t sigma = 1) {
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::normal_distribution<fp_t> dist(mean, sigma);
 
         for (size_t i = 0; i < N_out; i++) {
             for (size_t j = 0; j < N_in; j++) {
-                weight[i][j]->value = rnd();
+                weight[i][j]->value = dist(gen);
             }
         }
         if (bias[0] != nullptr) {
             for (size_t i = 0; i < N_out; i++) {
-                bias[i]->value = rnd();
+                bias[i]->value = dist(gen);
             }
         }
         return *this;
