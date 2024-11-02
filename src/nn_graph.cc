@@ -61,10 +61,13 @@ Graph::~Graph() {
 void Graph::clear_grad() { for (Node* node: nodes) { node->grad = 0; } }
 void Graph::forward() { for (OpNode* op: ops) { op->forward(); } }
 void Graph::backward(Node* node) {
-    assert(node->op != nullptr);
+    assert(node->graph == this);
     node->grad = 1;
     for (int i = ops.size() - 1; i >= 0; i--) {
-        ops[i]->backward();
+        assert(ops[i]->output != nullptr);
+        auto root_grad = ops[i]->output->grad;
+        if (root_grad == 0) continue;
+        ops[i]->backward(root_grad);
     }
 }
 

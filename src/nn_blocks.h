@@ -1,11 +1,10 @@
+/* Neural network building blocks */
 #pragma once
 #include "nn.h"
 #include <random>
 #include <cmath>
 
 namespace nn{
-
-/* -------- Template Implementations for Neural Network -------- */
 
 enum class ActivationType {
     Relu,
@@ -28,17 +27,10 @@ ActivationLayer<N> activation_layer(
     auto layer = ActivationLayer<N>();
     for (size_t i = 0; i < N; i++) {
         switch (type) {
-            case ActivationType::Relu:
-                layer.output[i] = graph.relu(input[i]);
-                break;
-            case ActivationType::Sigmoid:
-                layer.output[i] = graph.sigmoid(input[i]);
-                break;
-            case ActivationType::Tanh:
-                layer.output[i] = graph.tanh(input[i]);
-                break;
-            default:
-                assert(false);
+            case ActivationType::Relu: layer.output[i] = graph.relu(input[i]); break;
+            case ActivationType::Sigmoid: layer.output[i] = graph.sigmoid(input[i]); break;
+            case ActivationType::Tanh: layer.output[i] = graph.tanh(input[i]); break;
+            default: assert(false);
         }
     }
     return layer;
@@ -64,27 +56,26 @@ struct LinearLayer {
         return *this;
     }
 
-    // variance only applies to normal distribution
     LinearLayer normal_init(fp_t mean = true, fp_t sigma = 1) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
         std::normal_distribution<fp_t> dist(mean, sigma);
 
-        for (size_t i = 0; i < N_out; i++) {
-            for (size_t j = 0; j < N_in; j++) {
-                weight[i][j]->value = dist(gen);
+        for (auto &w : weight) {
+            for (auto &v : w) {
+                v->value = dist(gen);
             }
         }
         if (bias[0] != nullptr) {
-            for (size_t i = 0; i < N_out; i++) {
-                bias[i]->value = dist(gen);
+            for (auto &b : bias) {
+                b->value = dist(gen);
             }
         }
         return *this;
     }
 
-    ActivationLayer<N_out> operator << (ActivationType type) {
-        return activation_layer<N_out>(*graph, output, type);
+    ActivationLayer<N_out> operator << (ActivationType t) {
+        return activation_layer<N_out>(*graph, output, t);
     }
 };
 

@@ -136,7 +136,6 @@ int main(){
         for (auto [x, y, z] : get_samples<n_samples>()){
             model.input_x->value = x;
             model.input_y->value = y;
-            model.aim->value = z;
             model.graph->forward();
             if ((model.prediciton->value > 0.5) == (z > 0.5)){
                 n_correct++;

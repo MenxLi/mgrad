@@ -14,9 +14,8 @@ struct OpNode {
     std::string name = "Op";
     std::vector<Node*> inputs = std::vector<Node*>();
     Node *output = nullptr;
-    virtual void forward() = 0;             // update output->value
-    virtual void backward() = 0;            // update inputs[.]->grad, using output->grad
-    fp_t root_grad();
+    virtual void forward() = 0;                     // update output->value
+    virtual void backward(fp_t grad) = 0;           // update inputs[.]->grad
     virtual ~OpNode() {}
 };
 
@@ -24,7 +23,7 @@ struct OpNode {
     struct Op##OP: public OpNode { \
         Op##OP() { name = #OP; } \
         void forward() override; \
-        void backward() override; \
+        void backward(fp_t grad) override; \
     };
 
 DECLEAR_OP(Add)
