@@ -92,10 +92,11 @@ template <size_t N_in, size_t N_out>
 LinearLayer<N_in, N_out> linear_layer(
     Graph& graph, 
     Node* input[N_in],
-    const std::string& name = ""
+    std::string name = ""
 ){
     static_assert(N_in > 0 && N_out > 0, "Invalid layer size");
     auto layer = LinearLayer<N_in, N_out>(graph);
+    if (name == "") name = "linear_anon";
 
     for (size_t i = 0; i < N_in; i++) {
         layer.input[i] = input[i];
