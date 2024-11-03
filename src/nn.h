@@ -70,7 +70,7 @@ struct Graph {
     Node* sin(Node* a);
     Node* cos(Node* a);
 
-    std::string to_mermaid();
+    std::string to_graphviz();
 };
 
 struct Node {

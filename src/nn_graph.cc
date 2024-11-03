@@ -3,6 +3,7 @@
 #include <cassert>
 #include <sstream>
 #include <string>
+#include <iomanip>
 
 namespace nn {
 
@@ -74,39 +75,51 @@ void Graph::backward(Node* node) {
 
 std::string node_id(Node* node) { return std::to_string((size_t)node); }
 std::string node_id(OpNode* op) { return std::to_string((size_t)op); }
-std::string Graph::to_mermaid() {
-    std::string t = "graph TD;\n";
-    auto create_node = [&t](Node* node) {
-        std::stringstream ss;
-        if (node->name != "") {
-            ss << node->name << "@";
-        }
-        ss << "val: " << node->value;
-        if (node->grad != 0) {
-            assert(node->requires_grad);
-            ss << ", grad: " << node->grad;
-        }
-        else if (!node->requires_grad){
-            ss << ", const";
-        }
-        auto nid = node_id(node);
-        t += nid+ "[" + ss.str() + "]\n";
-        return nid;
+std::string Graph::to_graphviz() {
+    std::string t = "digraph G {\n";
+    t += "  node [ shape=box, fixedsize=false, color=black, fontcolor=black, fontsize=12, fillcolor=white, style=filled ];\n";
+    t += "  edge [ color=black ];\n";
+    t += "  rankdir=TB;\n";
+    t += "  nodesep=0.5;\n";
+
+    auto drawOpNode = [&](OpNode* op) {
+        t += "  " + node_id(op) + " [label=\"" + op->name + "\", color=blue];\n";
     };
-    auto create_op_node = [&t](OpNode* op) {
-        auto nid = node_id(op);
-        t += nid + "([" + op->name + "])\n";
-        return nid;
+    auto drawNode = [&](Node* node) {
+        auto format_val = [](fp_t val) {
+            std::stringstream ss;
+            if (std::abs(val) < 1e-3) ss << std::scientific << std::setprecision(3) << val;
+            else if (std::abs(val) > 1e3) ss << std::scientific << std::setprecision(3) << val;
+            else ss << std::fixed << std::setprecision(2) << val;
+            return ss.str();
+        };
+        auto get_node_label = [&format_val](Node* node) {
+            std::string ret = "";
+            if (node->name != "") ret += node->name + "@";
+            ret = ret + format_val(node->value);
+            if (node->requires_grad && node->grad != 0) ret += ", ∂=" + format_val(node->grad);
+            if (!node->requires_grad) ret += ", const";
+            return ret;
+        };
+        t += "  " + node_id(node) + " [label=\"" + get_node_label(node) + "\"];\n";
     };
-    
-    for (Node* node: nodes) { create_node(node); }
-    for (OpNode* op: ops) {
-        auto op_id = create_op_node(op);
-        for (Node* input: op->inputs) {
-            t += node_id(input) + " --> " + op_id + "\n";
-        }
-        t += op_id + " --> " + node_id(op->output) + "\n";
+
+    for (Node* node: nodes) {
+        if (node->op != nullptr) continue;
+        drawNode(node);
     }
-    return t;
+    for (OpNode* op: ops) { 
+        t += "subgraph cluster_" + node_id(op) + " {\n";
+        t += "  margin=5;\n  bgcolor=lightgrey;\n";
+        drawOpNode(op); 
+        drawNode(op->output);
+        t += "}\n";
+    }
+
+    for (OpNode* op: ops) {
+        for (Node* input: op->inputs) { t += "  " + node_id(input) + " -> " + node_id(op) + ";\n"; }
+        t += "  " + node_id(op) + " -> " + node_id(op->output) + "[color=blue];\n";
+    }
+    return t + "}";
 }
 }

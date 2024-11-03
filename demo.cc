@@ -24,13 +24,12 @@ int main(){
     ASSERT(a.grad == 2 + b.value);
     ASSERT(b.grad == 1 + a.value);
 
-    // save the computation graph to mermaid format
-    // you may visualize it using: https://mermaid.live/
-    std::ofstream file("model.mermaid");
-    file << graph.to_mermaid();
+    // save the computation graph to graphviz format
+    std::ofstream file("model.gv");
+    file << graph.to_graphviz();
     file.close();
 
-    std::cout << "Success, check model.mermaid" << std::endl;
+    std::cout << "Success, check computational graph: 'model.gv'" << std::endl;
     
     return 0;
 }

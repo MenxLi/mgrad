@@ -2,6 +2,7 @@ bin
 tmp
 compile_flags.txt
 *.mermaid
+*.gv
 *.out
 *.exe
 *.bmp
