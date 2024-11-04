@@ -45,6 +45,22 @@ void OpPow::backward(fp_t grad) {
     if (inputs[1]->requires_grad) inputs[1]->grad += grad * pow(inputs[0]->value, inputs[1]->value) * log(inputs[0]->value);
 }
 
+void OpMax::forward() {
+    output->value = std::max(inputs[0]->value, inputs[1]->value);
+}
+void OpMax::backward(fp_t grad) {
+    if (inputs[0]->requires_grad && inputs[0]->value > inputs[1]->value) inputs[0]->grad += grad;
+    if (inputs[1]->requires_grad && inputs[1]->value > inputs[0]->value) inputs[1]->grad += grad;
+}
+
+void OpMin::forward() {
+    output->value = std::min(inputs[0]->value, inputs[1]->value);
+}
+void OpMin::backward(fp_t grad) {
+    if (inputs[0]->requires_grad && inputs[0]->value < inputs[1]->value) inputs[0]->grad += grad;
+    if (inputs[1]->requires_grad && inputs[1]->value < inputs[0]->value) inputs[1]->grad += grad;
+}
+
 // f(x) = log(a) -> ∂f/∂a = 1 / a
 void OpLog::forward() {
     output->value = std::log(inputs[0]->value);
@@ -58,14 +74,6 @@ void OpMinus::forward() {
 }
 void OpMinus::backward(fp_t grad) {
     if (inputs[0]->requires_grad) inputs[0]->grad -= grad;
-}
-
-// f(x) = 1 / a -> ∂f/∂a = -1 / a^2
-void OpInv::forward() {
-    output->value = 1 / inputs[0]->value;
-}
-void OpInv::backward(fp_t grad) {
-    if (inputs[0]->requires_grad) inputs[0]->grad -= grad / (inputs[0]->value * inputs[0]->value);
 }
 
 void OpAbs::forward() {

@@ -1,6 +1,5 @@
 
-A minimal automatic differentiation library, just for fun...  
-In 300 lines of code (`src/nn.h` and `src/*.cc`), no dependencies. 
+A minimal automatic differentiation library. Just for fun...
 
 Two demos are provided: 
 - `demo.cc`: compute the gradient of a function and export computational graph.
@@ -13,4 +12,4 @@ g++ -std=c++17 -O3 src/*.cc demo[_mlp].cc
 ```
 
 Below shows the `demo_mlp.cc` training in action:  
-![](https://limengxun-imagebed.oss-cn-wuhan-lr.aliyuncs.com/pic/mgrad_sample.gif)
+![](https://limengxun-imagebed.oss-cn-wuhan-lr.aliyuncs.com/pic/mgrad_sample1.gif)

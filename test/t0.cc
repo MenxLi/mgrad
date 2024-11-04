@@ -40,10 +40,6 @@ void t0() {
         2, -1
         );
     test_unary_op(
-        g, [&g](Node* n) { return g.inv(n); },
-        2, -0.25
-        );
-    test_unary_op(
         g, [&g](Node* n) { return g.relu(n); },
         2, 1
         );
@@ -95,6 +91,14 @@ void t0() {
     test_binary_op(
         g, [&g](Node* a, Node* b) { return g.pow(a, b); },
         2, 3, 3*pow(2, 2), pow(2, 3)*log(2)
+    );
+    test_binary_op(
+        g, [&g](Node* a, Node* b) { return g.max(a, b); },
+        2, 3, 0, 1
+    );
+    test_binary_op(
+        g, [&g](Node* a, Node* b) { return g.min(a, b); },
+        2, 3, 1, 0
     );
 
 }

@@ -31,9 +31,10 @@ DECLEAR_OP(Sub)
 DECLEAR_OP(Mult)
 DECLEAR_OP(Div)
 DECLEAR_OP(Pow)
+DECLEAR_OP(Max)
+DECLEAR_OP(Min)
 DECLEAR_OP(Log)
 DECLEAR_OP(Minus)    // unary minus
-DECLEAR_OP(Inv)      // unary inverse
 DECLEAR_OP(Abs)
 DECLEAR_OP(Relu)
 DECLEAR_OP(Sigmoid)
@@ -57,10 +58,11 @@ struct Graph {
     Node* mul(Node* a, Node* b);
     Node* div(Node* a, Node* b);
     Node* pow(Node* a, Node* b);
+    Node* max(Node* a, Node* b);
+    Node* min(Node* a, Node* b);
 
     Node* log(Node* a);
     Node* minus(Node* a);
-    Node* inv(Node* a);
     Node* abs(Node* a);
 
     Node* relu(Node* a);
@@ -94,6 +96,10 @@ struct Node {
 
     Node& pow(Node& b) { return *graph->pow(this, &b); }
     Node& pow(fp_t b) { return *graph->pow(this, &graph->create_const(b)); }
+    Node& max(Node& b) { return *graph->max(this, &b); }
+    Node& max(fp_t b) { return *graph->max(this, &graph->create_const(b)); }
+    Node& min(Node& b) { return *graph->min(this, &b); }
+    Node& min(fp_t b) { return *graph->min(this, &graph->create_const(b)); }
     Node& log() { return *graph->log(this); }
     Node& abs() { return *graph->abs(this); }
     Node& relu() { return *graph->relu(this); }

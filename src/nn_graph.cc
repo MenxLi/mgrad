@@ -44,9 +44,10 @@ Node* Graph::sub(Node* a, Node *b) { IMPL_GRAPH_OP2(Sub) }
 Node* Graph::mul(Node* a, Node* b) { IMPL_GRAPH_OP2(Mult) }
 Node* Graph::div(Node* a, Node* b) { IMPL_GRAPH_OP2(Div) }
 Node* Graph::pow(Node* a, Node* b) { IMPL_GRAPH_OP2(Pow) }
+Node* Graph::max(Node* a, Node* b) { IMPL_GRAPH_OP2(Max) }
+Node* Graph::min(Node* a, Node* b) { IMPL_GRAPH_OP2(Min) }
 Node* Graph::log(Node* a) { IMPL_GRAPH_OP1(Log) }
 Node* Graph::minus(Node* a) { IMPL_GRAPH_OP1(Minus) }
-Node* Graph::inv(Node* a) { IMPL_GRAPH_OP1(Inv) }
 Node* Graph::abs(Node* a) { IMPL_GRAPH_OP1(Abs) }
 Node* Graph::relu(Node* a) { IMPL_GRAPH_OP1(Relu) }
 Node* Graph::sigmoid(Node* a) { IMPL_GRAPH_OP1(Sigmoid) }
