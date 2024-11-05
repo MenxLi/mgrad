@@ -48,7 +48,7 @@ struct LinearLayer {
 
     LinearLayer with_bias() {
         for (size_t i = 0; i < N_out; i++) {
-            bias[i] = &graph->create_var(0, "bias_" + std::to_string(i));
+            bias[i] = graph->create_var(0, "bias_" + std::to_string(i));
             auto& biased_out = *output[i] + *bias[i];
             biased_out.name = output[i]->name + "_biased";
             output[i] = &biased_out;
@@ -94,7 +94,7 @@ LinearLayer<N_in, N_out> linear_layer(
     }
     for (size_t i = 0; i < N_out; i++) {
         for (size_t j = 0; j < N_in; j++) {
-            layer.weight[i][j] = &graph.create_var(0, name + "_weight_" + std::to_string(i) + "_" + std::to_string(j));
+            layer.weight[i][j] = graph.create_var(0, name + "_weight_" + std::to_string(i) + "_" + std::to_string(j));
         }
     }
     for (size_t i = 0; i < N_out; i++) {

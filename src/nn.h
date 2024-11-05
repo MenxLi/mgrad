@@ -51,8 +51,8 @@ struct Graph {
     void backward(Node* node);
     void clear_grad();
 
-    Node& create_var(fp_t value, std::string name = "");
-    Node& create_const(fp_t value, std::string name = "");
+    Node* create_var(fp_t value = 0, std::string name = "");
+    Node* create_const(fp_t value = 0, std::string name = "");
     Node* add(Node* a, Node* b);
     Node* sub(Node* a, Node* b);
     Node* mul(Node* a, Node* b);
@@ -89,17 +89,17 @@ struct Node {
     Node& operator-(Node& b) { return *graph->sub(this, &b); }
     Node& operator*(Node& b) { return *graph->mul(this, &b); }
     Node& operator/(Node& b) { return *graph->div(this, &b); }
-    Node& operator+(fp_t b) { return *graph->add(this, &graph->create_const(b)); }
-    Node& operator-(fp_t b) { return *graph->sub(this, &graph->create_const(b)); }
-    Node& operator*(fp_t b) { return *graph->mul(this, &graph->create_const(b)); }
-    Node& operator/(fp_t b) { return *graph->div(this, &graph->create_const(b)); }
+    Node& operator+(fp_t b) { return *graph->add(this, graph->create_const(b)); }
+    Node& operator-(fp_t b) { return *graph->sub(this, graph->create_const(b)); }
+    Node& operator*(fp_t b) { return *graph->mul(this, graph->create_const(b)); }
+    Node& operator/(fp_t b) { return *graph->div(this, graph->create_const(b)); }
 
     Node& pow(Node& b) { return *graph->pow(this, &b); }
-    Node& pow(fp_t b) { return *graph->pow(this, &graph->create_const(b)); }
+    Node& pow(fp_t b) { return *graph->pow(this, graph->create_const(b)); }
     Node& max(Node& b) { return *graph->max(this, &b); }
-    Node& max(fp_t b) { return *graph->max(this, &graph->create_const(b)); }
+    Node& max(fp_t b) { return *graph->max(this, graph->create_const(b)); }
     Node& min(Node& b) { return *graph->min(this, &b); }
-    Node& min(fp_t b) { return *graph->min(this, &graph->create_const(b)); }
+    Node& min(fp_t b) { return *graph->min(this, graph->create_const(b)); }
     Node& log() { return *graph->log(this); }
     Node& abs() { return *graph->abs(this); }
     Node& relu() { return *graph->relu(this); }
@@ -115,9 +115,9 @@ private:
     Node& operator=(const Node&& b) = delete;
 };
 
-inline Node& operator+(fp_t a, Node& b) { return *b.graph->add(&b.graph->create_const(a), &b); }
-inline Node& operator-(fp_t a, Node& b) { return *b.graph->sub(&b.graph->create_const(a), &b); }
-inline Node& operator*(fp_t a, Node& b) { return *b.graph->mul(&b.graph->create_const(a), &b); }
-inline Node& operator/(fp_t a, Node& b) { return *b.graph->div(&b.graph->create_const(a), &b); }
+inline Node& operator+(fp_t a, Node& b) { return *b.graph->add(b.graph->create_const(a), &b); }
+inline Node& operator-(fp_t a, Node& b) { return *b.graph->sub(b.graph->create_const(a), &b); }
+inline Node& operator*(fp_t a, Node& b) { return *b.graph->mul(b.graph->create_const(a), &b); }
+inline Node& operator/(fp_t a, Node& b) { return *b.graph->div(b.graph->create_const(a), &b); }
 
 }

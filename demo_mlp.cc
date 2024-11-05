@@ -51,9 +51,9 @@ struct Model{
 
 Model create_model(nn::Graph& graph){
     std::vector<nn::Node*> params;
-    auto& input_x = graph.create_const(0);
-    auto& input_y = graph.create_const(0);
-    auto& output_aim = graph.create_const(0);
+    auto& input_x = *graph.create_var();
+    auto& input_y = *graph.create_var();
+    auto& output_aim = *graph.create_const();
 
     nn::Node* input[2] = {
         &input_x,

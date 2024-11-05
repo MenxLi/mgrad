@@ -8,14 +8,14 @@
 namespace nn {
 
 // create a new leaf node
-Node& Graph::create_var(fp_t value, std::string name) {
+Node* Graph::create_var(fp_t value, std::string name) {
     Node* node = new Node(this, name, value);
     nodes.push_back(node);
-    return *node;
+    return node;
 }
-Node& Graph::create_const(fp_t value, std::string name) {
-    Node& node = create_var(value, name);
-    node.requires_grad = false;
+Node* Graph::create_const(fp_t value, std::string name) {
+    Node* node = create_var(value, name);
+    node->requires_grad = false;
     return node;
 }
 

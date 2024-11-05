@@ -9,8 +9,8 @@ int main(){
 
     // name is optional, for visualization only
     // be sure to use & to reference the variables
-    auto& a = graph.create_var(1, "a");
-    auto& b = graph.create_var(2, "b");
+    auto& a = *graph.create_var(1, "a");
+    auto& b = *graph.create_var(2, "b");
 
     auto& c = 2 * a + b;
     auto& d = a * b;
