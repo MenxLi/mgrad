@@ -42,22 +42,22 @@ std::array<fp_t[3], N> get_samples(){
 
 struct Model{
     nn::Graph* graph;
-    nn::Node* input_x;
-    nn::Node* input_y;
-    nn::Node* aim;
-    nn::Node* prediciton;
-    nn::Node* loss;
+    nn::NodeProxy input_x;
+    nn::NodeProxy input_y;
+    nn::NodeProxy aim;
+    nn::NodeProxy prediciton;
+    nn::NodeProxy loss;
 };
 
 Model create_model(nn::Graph& graph){
     std::vector<nn::Node*> params;
-    auto& input_x = *graph.create_var();
-    auto& input_y = *graph.create_var();
-    auto& output_aim = *graph.create_const();
+    auto input_x = graph.variable();
+    auto input_y = graph.variable();
+    auto output_aim = graph.variable();
 
     nn::Node* input[2] = {
-        &input_x,
-        &input_y
+        input_x.ptr,
+        input_y.ptr
     };
 
     const int w = 8;
@@ -70,17 +70,17 @@ Model create_model(nn::Graph& graph){
     auto l4 = nn::linear_layer<w, 1>(graph, l3.output)
         .with_bias().normal_init() << nn::ActivationType::Sigmoid;
 
-    auto& prediciton = *l4.output[0];
+    auto prediciton = nn::NodeProxy(l4.output[0]);
     const fp_t eps = 1e-7;
-    auto& bce_loss = -output_aim * (prediciton + eps).log() - (1 - output_aim) * (1 - prediciton + eps).log();
+    auto bce_loss = -output_aim * (prediciton + eps).log() - (1 - output_aim) * (1 - prediciton + eps).log();
 
     return Model{
         &graph,
-        &input_x,
-        &input_y,
-        &output_aim,
-        &prediciton,
-        &bce_loss
+        input_x,
+        input_y,
+        output_aim,
+        prediciton,
+        bce_loss
     };
 }
 
@@ -91,15 +91,15 @@ void train_step(Model& model, int n_iter, int total_iter){
     fp_t loss = 0;
     std::vector<fp_t> grad_sums = std::vector<fp_t>(model.graph->nodes.size(), 0);
     for (auto [x, y, z] : get_samples<batch_size>()){
-        model.input_x->value = x;
-        model.input_y->value = y;
-        model.aim->value = z;
+        model.input_x.set_value(x);
+        model.input_y.set_value(y);
+        model.aim.set_value(z);
         model.graph->forward();
         model.graph->backward(model.loss);
         for (std::size_t i = 0; i < model.graph->nodes.size(); i++){
             grad_sums[i] += model.graph->nodes[i]->grad;
         }
-        loss += model.loss->value;
+        loss += model.loss.value();
         model.graph->clear_grad();
     }
 
@@ -134,17 +134,17 @@ int main(){
         float n_correct = 0;
         const int n_samples = 500;
         for (auto [x, y, z] : get_samples<n_samples>()){
-            model.input_x->value = x;
-            model.input_y->value = y;
+            model.input_x.set_value(x);
+            model.input_y.set_value(y);
             model.graph->forward();
-            if ((model.prediciton->value > 0.5) == (z > 0.5)){
+            if ((model.prediciton.value() > 0.5) == (z > 0.5)){
                 n_correct++;
             }
         }
         return n_correct / static_cast<float>(n_samples);
     };
 
-    std::cout << "final loss: " << model.loss->value << ", acc: " << get_acc(model) << std::endl;
+    std::cout << "final loss: " << model.loss.value() << ", acc: " << get_acc(model) << std::endl;
     save_bitmap(model);
     return 0;
 }
@@ -163,10 +163,10 @@ void save_bitmap(Model& model){
 
     for (int i = 0; i < w; i++){
         for (int j = 0; j < h; j++){
-            model.input_x->value = i * 10.0 / w - 5;
-            model.input_y->value = j * 10.0 / h - 5;
+            model.input_x.set_value(i * 10.0 / w - 5);
+            model.input_y.set_value(j * 10.0 / h - 5);
             model.graph->forward();
-            auto pred = model.prediciton->value;
+            auto pred = model.prediciton.value();
             res[i][j] = norm_value(pred);
         }
     }

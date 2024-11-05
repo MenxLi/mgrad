@@ -7,6 +7,16 @@
 
 namespace nn {
 
+NodeProxy Graph::variable(fp_t value, std::string name) {
+    Node* node = create_var(value, name);
+    return NodeProxy(node);
+}
+
+NodeProxy Graph::constant(fp_t value, std::string name) {
+    Node* node = create_const(value, name);
+    return NodeProxy(node);
+}
+
 // create a new leaf node
 Node* Graph::create_var(fp_t value, std::string name) {
     Node* node = new Node(this, name, value);
@@ -52,6 +62,7 @@ Graph::~Graph() {
 
 void Graph::clear_grad() { for (Node* node: nodes) { node->grad = 0; } }
 void Graph::forward() { for (OpNode* op: ops) { op->forward(); } }
+void Graph::backward(NodeProxy node_proxy) { backward(node_proxy.ptr); }
 void Graph::backward(Node* node) {
     assert(node->graph == this);
     node->grad = 1;

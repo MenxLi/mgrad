@@ -8,21 +8,20 @@ int main(){
     nn::Graph graph;
 
     // name is optional, for visualization only
-    // be sure to use & to reference the variables
-    auto& a = *graph.create_var(1, "a");
-    auto& b = *graph.create_var(2, "b");
+    auto a = graph.variable(1, "a");
+    auto b = graph.variable(2, "b");
 
-    auto& c = 2 * a + b;
-    auto& d = a * b;
+    auto c = 2 * a + b;
+    auto d = a * b;
 
-    auto& e = c + (d - 1);
+    auto e = c + (d - 1);
 
     // e = (2a + b) + (a * b - 1) -> ∂e/∂a = 2 + b, ∂e/∂b = 1 + a
     graph.forward();
-    graph.backward(&e);
+    graph.backward(e);
 
-    ASSERT(a.grad == 2 + b.value);
-    ASSERT(b.grad == 1 + a.value);
+    ASSERT(a.grad() == 2 + b.value());
+    ASSERT(b.grad() == 1 + a.value());
 
     // save the computation graph to graphviz format
     std::ofstream file("model.gv");

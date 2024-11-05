@@ -83,6 +83,22 @@ void OpAbs::backward(fp_t grad) {
     if (inputs[0]->requires_grad) inputs[0]->grad += grad * (inputs[0]->value > 0 ? 1 : -1);
 }
 
+// f(x) = sin(x) -> ∂f/∂x = cos(x)
+void OpSin::forward() {
+    output->value = sin(inputs[0]->value);
+}
+void OpSin::backward(fp_t grad) {
+    if (inputs[0]->requires_grad) inputs[0]->grad += grad * cos(inputs[0]->value);
+}
+
+// f(x) = cos(x) -> ∂f/∂x = -sin(x)
+void OpCos::forward() {
+    output->value = cos(inputs[0]->value);
+}
+void OpCos::backward(fp_t grad) {
+    if (inputs[0]->requires_grad) inputs[0]->grad -= grad * sin(inputs[0]->value);
+}
+
 void OpRelu::forward() {
     output->value = inputs[0]->value > 0 ? inputs[0]->value : 0;
 }
@@ -106,22 +122,6 @@ void OpTanh::forward() {
 void OpTanh::backward(fp_t grad) {
     fp_t t = output->value;
     if (inputs[0]->requires_grad) inputs[0]->grad += grad * (1 - t * t);
-}
-
-// f(x) = sin(x) -> ∂f/∂x = cos(x)
-void OpSin::forward() {
-    output->value = sin(inputs[0]->value);
-}
-void OpSin::backward(fp_t grad) {
-    if (inputs[0]->requires_grad) inputs[0]->grad += grad * cos(inputs[0]->value);
-}
-
-// f(x) = cos(x) -> ∂f/∂x = -sin(x)
-void OpCos::forward() {
-    output->value = cos(inputs[0]->value);
-}
-void OpCos::backward(fp_t grad) {
-    if (inputs[0]->requires_grad) inputs[0]->grad -= grad * sin(inputs[0]->value);
 }
 
 }
