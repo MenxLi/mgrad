@@ -19,41 +19,31 @@ Node& Graph::create_const(fp_t value, std::string name) {
     return node;
 }
 
-#define IMPL_GRAPH_OP1(OP) \
+#define IMPL_GRAPH_OP(OP, ...) \
     Op##OP* op = new Op##OP(); \
     Node* node = new Node(this); \
     node->op = op; \
-    op->inputs = {a}; \
+    op->inputs = {__VA_ARGS__}; \
     op->output = node; \
     ops.push_back(op); \
     nodes.push_back(node); \
     return node; \
 
-#define IMPL_GRAPH_OP2(OP) \
-    Op##OP* op = new Op##OP(); \
-    Node* node = new Node(this); \
-    node->op = op; \
-    op->inputs = {a, b}; \
-    op->output = node; \
-    ops.push_back(op); \
-    nodes.push_back(node); \
-    return node; \
-
-Node* Graph::add(Node* a, Node* b) { IMPL_GRAPH_OP2(Add) }
-Node* Graph::sub(Node* a, Node *b) { IMPL_GRAPH_OP2(Sub) }
-Node* Graph::mul(Node* a, Node* b) { IMPL_GRAPH_OP2(Mult) }
-Node* Graph::div(Node* a, Node* b) { IMPL_GRAPH_OP2(Div) }
-Node* Graph::pow(Node* a, Node* b) { IMPL_GRAPH_OP2(Pow) }
-Node* Graph::max(Node* a, Node* b) { IMPL_GRAPH_OP2(Max) }
-Node* Graph::min(Node* a, Node* b) { IMPL_GRAPH_OP2(Min) }
-Node* Graph::log(Node* a) { IMPL_GRAPH_OP1(Log) }
-Node* Graph::minus(Node* a) { IMPL_GRAPH_OP1(Minus) }
-Node* Graph::abs(Node* a) { IMPL_GRAPH_OP1(Abs) }
-Node* Graph::relu(Node* a) { IMPL_GRAPH_OP1(Relu) }
-Node* Graph::sigmoid(Node* a) { IMPL_GRAPH_OP1(Sigmoid) }
-Node* Graph::tanh(Node* a) { IMPL_GRAPH_OP1(Tanh) }
-Node* Graph::sin(Node* a) { IMPL_GRAPH_OP1(Sin) }
-Node* Graph::cos(Node* a) { IMPL_GRAPH_OP1(Cos) }
+Node* Graph::add(Node* a, Node* b) { IMPL_GRAPH_OP(Add, a, b) }
+Node* Graph::sub(Node* a, Node *b) { IMPL_GRAPH_OP(Sub, a, b) }
+Node* Graph::mul(Node* a, Node* b) { IMPL_GRAPH_OP(Mult, a, b) }
+Node* Graph::div(Node* a, Node* b) { IMPL_GRAPH_OP(Div, a, b) }
+Node* Graph::pow(Node* a, Node* b) { IMPL_GRAPH_OP(Pow, a, b) }
+Node* Graph::max(Node* a, Node* b) { IMPL_GRAPH_OP(Max, a, b) }
+Node* Graph::min(Node* a, Node* b) { IMPL_GRAPH_OP(Min, a, b) }
+Node* Graph::log(Node* a) { IMPL_GRAPH_OP(Log, a) }
+Node* Graph::minus(Node* a) { IMPL_GRAPH_OP(Minus, a) }
+Node* Graph::abs(Node* a) { IMPL_GRAPH_OP(Abs, a) }
+Node* Graph::relu(Node* a) { IMPL_GRAPH_OP(Relu, a) }
+Node* Graph::sigmoid(Node* a) { IMPL_GRAPH_OP(Sigmoid, a) }
+Node* Graph::tanh(Node* a) { IMPL_GRAPH_OP(Tanh, a) }
+Node* Graph::sin(Node* a) { IMPL_GRAPH_OP(Sin, a) }
+Node* Graph::cos(Node* a) { IMPL_GRAPH_OP(Cos, a) }
 
 Graph::~Graph() {
     for (Node* node: nodes) { delete node; }
