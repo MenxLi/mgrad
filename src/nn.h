@@ -31,28 +31,28 @@ struct OpNode: public OpNodeBase {
     virtual ~OpNode() {}
 };
 
-#define DECLEAR_OP(OP) \
+#define DECLARE_OP(OP) \
     struct Op##OP: public OpNode<Op##OP> { \
         Op##OP() { name = #OP; } \
         void forward(); \
         void backward(fp_t grad); \
     };
 
-DECLEAR_OP(Add)
-DECLEAR_OP(Sub)
-DECLEAR_OP(Mult)
-DECLEAR_OP(Div)
-DECLEAR_OP(Pow)
-DECLEAR_OP(Max)
-DECLEAR_OP(Min)
-DECLEAR_OP(Log)
-DECLEAR_OP(Minus)    // unary minus
-DECLEAR_OP(Abs)
-DECLEAR_OP(Sin)
-DECLEAR_OP(Cos)
-DECLEAR_OP(Relu)
-DECLEAR_OP(Sigmoid)
-DECLEAR_OP(Tanh)
+DECLARE_OP(Add)
+DECLARE_OP(Sub)
+DECLARE_OP(Mult)
+DECLARE_OP(Div)
+DECLARE_OP(Pow)
+DECLARE_OP(Max)
+DECLARE_OP(Min)
+DECLARE_OP(Log)
+DECLARE_OP(Minus)    // unary minus
+DECLARE_OP(Abs)
+DECLARE_OP(Sin)
+DECLARE_OP(Cos)
+DECLARE_OP(Relu)
+DECLARE_OP(Sigmoid)
+DECLARE_OP(Tanh)
 
 struct Graph {
 
