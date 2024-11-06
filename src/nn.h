@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cassert>
+#include <functional>
 
 namespace nn {
 
@@ -11,20 +12,30 @@ struct Node;
 struct Graph;
 struct NodeProxy;
 
-struct OpNode {
+struct OpNodeBase {
     std::string name = "Op";
     std::vector<Node*> inputs = std::vector<Node*>();
     Node *output = nullptr;
-    virtual void forward() = 0;                     // update output->value
-    virtual void backward(fp_t grad) = 0;           // update inputs[.]->grad
+    virtual ~OpNodeBase() {}
+};
+
+// the derived class should implement:
+//  - void forward()
+//  - void backward(fp_t grad)
+// forward_call update output->value
+// backward_call update inputs[.]->grad
+template <typename Derived>
+struct OpNode: public OpNodeBase {
+    inline void forward_call() { static_cast<Derived*>(this)->forward(); }
+    inline void backward_call(fp_t grad) { static_cast<Derived*>(this)->backward(grad); }
     virtual ~OpNode() {}
 };
 
 #define DECLEAR_OP(OP) \
-    struct Op##OP: public OpNode { \
+    struct Op##OP: public OpNode<Op##OP> { \
         Op##OP() { name = #OP; } \
-        void forward() override; \
-        void backward(fp_t grad) override; \
+        void forward(); \
+        void backward(fp_t grad); \
     };
 
 DECLEAR_OP(Add)
@@ -45,9 +56,16 @@ DECLEAR_OP(Tanh)
 
 struct Graph {
 
+    struct OpRecord {
+        OpNodeBase* op;
+        Node* output;
+        std::function<void()> forward;
+        std::function<void(fp_t)> backward;
+    };
+
     ~Graph();
     std::vector<Node*> nodes;
-    std::vector<OpNode*> ops;
+    std::vector<OpRecord> op_records;
     void forward();
     void backward(Node* node);
     void backward(NodeProxy node_proxy);
@@ -86,8 +104,8 @@ struct Node {
     fp_t value;
     fp_t grad = 0;
     Graph* graph = nullptr;
-    OpNode* op = nullptr;
     std::string name = "";
+    bool is_leaf = true;
     bool requires_grad = true;
     Node(Graph* g, std::string name = "", fp_t value = 0): value(value), graph(g), name(name) {}
 

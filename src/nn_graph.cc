@@ -32,10 +32,11 @@ Node* Graph::create_const(fp_t value, std::string name) {
 #define IMPL_GRAPH_OP(OP, ...) \
     Op##OP* op = new Op##OP(); \
     Node* node = new Node(this); \
-    node->op = op; \
+    node->is_leaf = false; \
     op->inputs = {__VA_ARGS__}; \
     op->output = node; \
-    ops.push_back(op); \
+    OpRecord record = {op, node, [op]() { op->forward_call(); }, [op](fp_t grad) { op->backward_call(grad); }}; \
+    op_records.push_back(record); \
     nodes.push_back(node); \
     return node; \
 
@@ -57,26 +58,25 @@ Node* Graph::cos(Node* a) { IMPL_GRAPH_OP(Cos, a) }
 
 Graph::~Graph() {
     for (Node* node: nodes) { delete node; }
-    for (OpNode* op: ops) { delete op; }
+    for (auto& record: op_records) { delete record.op; }
 }
 
 void Graph::clear_grad() { for (Node* node: nodes) { node->grad = 0; } }
-void Graph::forward() { for (OpNode* op: ops) { op->forward(); } }
+void Graph::forward() { for (auto& record: op_records) { record.forward(); } }
 void Graph::backward(NodeProxy node_proxy) { backward(node_proxy.ptr); }
 void Graph::backward(Node* node) {
     assert(node->graph == this);
     node->grad = 1;
-    for (int i = ops.size() - 1; i >= 0; i--) {
-        assert(ops[i]->output != nullptr);
-        auto root_grad = ops[i]->output->grad;
+    for (int i = op_records.size() - 1; i >= 0; i--) {
+        auto root_grad = op_records[i].output->grad;
         if (root_grad == 0) continue;
-        ops[i]->backward(root_grad);
+        op_records[i].backward(root_grad);
     }
 }
 
 
 std::string node_id(Node* node) { return std::to_string((size_t)node); }
-std::string node_id(OpNode* op) { return std::to_string((size_t)op); }
+std::string node_id(OpNodeBase* op) { return std::to_string((size_t)op); }
 std::string Graph::to_graphviz() {
     std::string t = "digraph G {\n";
     t += "  node [ shape=box, fixedsize=false, color=black, fontcolor=black, fontsize=12, fillcolor=white, style=filled ];\n";
@@ -84,7 +84,7 @@ std::string Graph::to_graphviz() {
     t += "  rankdir=TB;\n";
     t += "  nodesep=0.5;\n";
 
-    auto drawOpNode = [&](OpNode* op) {
+    auto drawOpNode = [&](OpNodeBase* op) {
         t += "  " + node_id(op) + " [label=\"" + op->name + "\", color=blue];\n";
     };
     auto drawNode = [&](Node* node) {
@@ -107,10 +107,11 @@ std::string Graph::to_graphviz() {
     };
 
     for (Node* node: nodes) {
-        if (node->op != nullptr) continue;
+        if (node->is_leaf) continue;
         drawNode(node);
     }
-    for (OpNode* op: ops) { 
+    for (auto& record: op_records) {
+        OpNodeBase* op = record.op;
         t += "subgraph cluster_" + node_id(op) + " {\n";
         t += "  margin=5;\n  bgcolor=lightgrey;\n";
         drawOpNode(op); 
@@ -118,7 +119,8 @@ std::string Graph::to_graphviz() {
         t += "}\n";
     }
 
-    for (OpNode* op: ops) {
+    for (auto& record: op_records) {
+        OpNodeBase* op = record.op;
         for (Node* input: op->inputs) { t += "  " + node_id(input) + " -> " + node_id(op) + ";\n"; }
         t += "  " + node_id(op) + " -> " + node_id(op->output) + "[color=blue];\n";
     }
