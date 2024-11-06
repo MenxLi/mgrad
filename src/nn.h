@@ -76,6 +76,10 @@ struct Graph {
     Node* tanh(Node* a);
 
     std::string to_graphviz();
+
+private:
+    Graph& operator=(const Graph& b) = delete;
+    Graph& operator=(const Graph&& b) = delete;
 };
 
 struct Node {
@@ -95,49 +99,52 @@ private:
 };
 
 
-// For handy usage of operator overloading
+// For handy usage of: 
+// 1. operator overloading
+// 2. copy and move assignment
 struct NodeProxy{
     Node* ptr;
-    Graph* graph;
-    NodeProxy(Node* ptr): ptr(ptr), graph(ptr->graph) {}
-    NodeProxy(Node& node): ptr(&node), graph(node.graph) {}
-    NodeProxy(const NodeProxy& b): ptr(b.ptr), graph(b.graph) {}
-    NodeProxy(const NodeProxy&& b): ptr(b.ptr), graph(b.graph) {}
-    NodeProxy& operator=(const NodeProxy& b) { ptr = b.ptr; graph = b.graph; return *this; }
 
+    NodeProxy(Node* ptr): ptr(ptr) {}
+    NodeProxy(Node& node): ptr(&node) {}
+    NodeProxy(const NodeProxy& b): ptr(b.ptr) {}
+    NodeProxy(const NodeProxy&& b): ptr(b.ptr) {}
+    NodeProxy& operator=(const NodeProxy& b) { ptr = b.ptr; return *this; }
+
+    inline Graph& graph() { return *ptr->graph; }
     inline bool requires_grad() { return ptr->requires_grad; }
     inline void set_value(fp_t v) { ptr->value = v; }
     inline fp_t value() { return ptr->value; }
     inline fp_t grad() { return ptr->grad; }
  
-    NodeProxy operator-() { return NodeProxy(*graph->minus(ptr)); }
-    NodeProxy operator+(NodeProxy b) { return NodeProxy(*graph->add(ptr, b.ptr)); }
-    NodeProxy operator-(NodeProxy b) { return NodeProxy(*graph->sub(ptr, b.ptr)); }
-    NodeProxy operator*(NodeProxy b) { return NodeProxy(*graph->mul(ptr, b.ptr)); }
-    NodeProxy operator/(NodeProxy b) { return NodeProxy(*graph->div(ptr, b.ptr)); }
-    NodeProxy operator+(fp_t b) { return NodeProxy(*graph->add(ptr, graph->create_const(b))); }
-    NodeProxy operator-(fp_t b) { return NodeProxy(*graph->sub(ptr, graph->create_const(b))); }
-    NodeProxy operator*(fp_t b) { return NodeProxy(*graph->mul(ptr, graph->create_const(b))); }
-    NodeProxy operator/(fp_t b) { return NodeProxy(*graph->div(ptr, graph->create_const(b))); }
+    NodeProxy operator-() { return NodeProxy(graph().minus(ptr)); }
+    NodeProxy operator+(NodeProxy b) { return NodeProxy(graph().add(ptr, b.ptr)); }
+    NodeProxy operator-(NodeProxy b) { return NodeProxy(graph().sub(ptr, b.ptr)); }
+    NodeProxy operator*(NodeProxy b) { return NodeProxy(graph().mul(ptr, b.ptr)); }
+    NodeProxy operator/(NodeProxy b) { return NodeProxy(graph().div(ptr, b.ptr)); }
+    NodeProxy operator+(fp_t b) { return NodeProxy(graph().add(ptr, graph().create_const(b))); }
+    NodeProxy operator-(fp_t b) { return NodeProxy(graph().sub(ptr, graph().create_const(b))); }
+    NodeProxy operator*(fp_t b) { return NodeProxy(graph().mul(ptr, graph().create_const(b))); }
+    NodeProxy operator/(fp_t b) { return NodeProxy(graph().div(ptr, graph().create_const(b))); }
 
-    NodeProxy pow(NodeProxy b) { return NodeProxy(*graph->pow(ptr, b.ptr)); }
-    NodeProxy pow(fp_t b) { return NodeProxy(*graph->pow(ptr, graph->create_const(b))); }
-    NodeProxy max(NodeProxy b) { return NodeProxy(*graph->max(ptr, b.ptr)); }
-    NodeProxy max(fp_t b) { return NodeProxy(*graph->max(ptr, graph->create_const(b))); }
-    NodeProxy min(NodeProxy b) { return NodeProxy(*graph->min(ptr, b.ptr)); }
-    NodeProxy min(fp_t b) { return NodeProxy(*graph->min(ptr, graph->create_const(b))); }
-    NodeProxy log() { return NodeProxy(*graph->log(ptr)); }
-    NodeProxy abs() { return NodeProxy(*graph->abs(ptr)); }
-    NodeProxy sin() { return NodeProxy(*graph->sin(ptr)); }
-    NodeProxy cos() { return NodeProxy(*graph->cos(ptr)); }
+    NodeProxy pow(NodeProxy b) { return NodeProxy(graph().pow(ptr, b.ptr)); }
+    NodeProxy pow(fp_t b) { return NodeProxy(graph().pow(ptr, graph().create_const(b))); }
+    NodeProxy max(NodeProxy b) { return NodeProxy(graph().max(ptr, b.ptr)); }
+    NodeProxy max(fp_t b) { return NodeProxy(graph().max(ptr, graph().create_const(b))); }
+    NodeProxy min(NodeProxy b) { return NodeProxy(graph().min(ptr, b.ptr)); }
+    NodeProxy min(fp_t b) { return NodeProxy(graph().min(ptr, graph().create_const(b))); }
+    NodeProxy log() { return NodeProxy(graph().log(ptr)); }
+    NodeProxy abs() { return NodeProxy(graph().abs(ptr)); }
+    NodeProxy sin() { return NodeProxy(graph().sin(ptr)); }
+    NodeProxy cos() { return NodeProxy(graph().cos(ptr)); }
 
-    NodeProxy relu() { return NodeProxy(*graph->relu(ptr)); }
-    NodeProxy sigmoid() { return NodeProxy(*graph->sigmoid(ptr)); }
-    NodeProxy tanh() { return NodeProxy(*graph->tanh(ptr)); }
+    NodeProxy relu() { return NodeProxy(graph().relu(ptr)); }
+    NodeProxy sigmoid() { return NodeProxy(graph().sigmoid(ptr)); }
+    NodeProxy tanh() { return NodeProxy(graph().tanh(ptr)); }
 };
-inline NodeProxy operator+(fp_t a, NodeProxy b) { return NodeProxy(*b.graph->add(b.graph->create_const(a), b.ptr)); }
-inline NodeProxy operator-(fp_t a, NodeProxy b) { return NodeProxy(*b.graph->sub(b.graph->create_const(a), b.ptr)); }
-inline NodeProxy operator*(fp_t a, NodeProxy b) { return NodeProxy(*b.graph->mul(b.graph->create_const(a), b.ptr)); }
-inline NodeProxy operator/(fp_t a, NodeProxy b) { return NodeProxy(*b.graph->div(b.graph->create_const(a), b.ptr)); }
+inline NodeProxy operator+(fp_t a, NodeProxy b) { return NodeProxy(*b.graph().add(b.graph().create_const(a), b.ptr)); }
+inline NodeProxy operator-(fp_t a, NodeProxy b) { return NodeProxy(*b.graph().sub(b.graph().create_const(a), b.ptr)); }
+inline NodeProxy operator*(fp_t a, NodeProxy b) { return NodeProxy(*b.graph().mul(b.graph().create_const(a), b.ptr)); }
+inline NodeProxy operator/(fp_t a, NodeProxy b) { return NodeProxy(*b.graph().div(b.graph().create_const(a), b.ptr)); }
 
 }
