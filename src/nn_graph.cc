@@ -62,10 +62,9 @@ Graph::~Graph() {
 
 void Graph::clear_grad() { for (Node* node: nodes) { node->grad = 0; } }
 void Graph::forward() { for (OpNode* op: ops) { op->forward(); } }
-void Graph::backward(NodeProxy node_proxy) { backward(node_proxy.ptr); }
-void Graph::backward(Node* node) {
+void Graph::backward(Node* node, fp_t grad) {
     assert(node->graph == this);
-    node->grad = 1;
+    node->grad = grad;
     for (int i = ops.size() - 1; i >= 0; i--) {
         assert(ops[i]->output != nullptr);
         auto root_grad = ops[i]->output->grad;

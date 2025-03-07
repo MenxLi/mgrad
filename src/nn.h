@@ -49,8 +49,8 @@ struct Graph {
     std::vector<Node*> nodes;
     std::vector<OpNode*> ops;
     void forward();
-    void backward(Node* node);
-    void backward(NodeProxy node_proxy);
+    void backward(Node* node, fp_t grad = 1);
+    inline void backward(NodeProxy node_proxy, fp_t grad = 1);
     void clear_grad();
 
     NodeProxy variable(fp_t value = 0, std::string name = "");
@@ -111,11 +111,11 @@ struct NodeProxy{
     NodeProxy(const NodeProxy&& b): ptr(b.ptr) {}
     NodeProxy& operator=(const NodeProxy& b) { ptr = b.ptr; return *this; }
 
-    inline Graph& graph() { return *ptr->graph; }
-    inline bool requires_grad() { return ptr->requires_grad; }
-    inline void set_value(fp_t v) { ptr->value = v; }
-    inline fp_t value() { return ptr->value; }
-    inline fp_t grad() { return ptr->grad; }
+    Graph& graph() { return *ptr->graph; }
+    bool requires_grad() { return ptr->requires_grad; }
+    void set_value(fp_t v) { ptr->value = v; }
+    fp_t value() { return ptr->value; }
+    fp_t grad() { return ptr->grad; }
  
     NodeProxy operator-() { return NodeProxy(graph().minus(ptr)); }
     NodeProxy operator+(NodeProxy b) { return NodeProxy(graph().add(ptr, b.ptr)); }
@@ -146,5 +146,7 @@ inline NodeProxy operator+(fp_t a, NodeProxy b) { return NodeProxy(*b.graph().ad
 inline NodeProxy operator-(fp_t a, NodeProxy b) { return NodeProxy(*b.graph().sub(b.graph().create_const(a), b.ptr)); }
 inline NodeProxy operator*(fp_t a, NodeProxy b) { return NodeProxy(*b.graph().mul(b.graph().create_const(a), b.ptr)); }
 inline NodeProxy operator/(fp_t a, NodeProxy b) { return NodeProxy(*b.graph().div(b.graph().create_const(a), b.ptr)); }
+
+void nn::Graph::backward(NodeProxy node_proxy, fp_t grad) { backward(node_proxy.ptr, grad); }
 
 }
