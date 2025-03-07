@@ -3,6 +3,7 @@
 #include "utils/bitmap.h"
 
 #include <iostream>
+#include <memory>
 #include <random>
 #include <array>
 
@@ -55,7 +56,7 @@ Model create_model(nn::Graph& graph){
     auto input_y = graph.variable();
     auto output_aim = graph.variable();
 
-    nn::Node* input[2] = {
+    std::shared_ptr<nn::Node> input[2] = {
         input_x.ptr,
         input_y.ptr
     };

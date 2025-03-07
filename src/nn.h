@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cassert>
+#include <memory>
 
 namespace nn {
 
@@ -13,8 +14,8 @@ struct NodeProxy;
 
 struct OpNode {
     std::string name = "Op";
-    std::vector<Node*> inputs = std::vector<Node*>();
-    Node *output = nullptr;
+    std::vector<std::shared_ptr<Node>> inputs = std::vector<std::shared_ptr<Node>>();
+    std::shared_ptr<Node> output = nullptr;
     virtual void forward() = 0;                     // update output->value
     virtual void backward(fp_t grad) = 0;           // update inputs[.]->grad
     virtual ~OpNode() {}
@@ -46,34 +47,34 @@ DECLARE_OP(Tanh)
 struct Graph {
 
     ~Graph();
-    std::vector<Node*> nodes;
-    std::vector<OpNode*> ops;
+    std::vector<std::shared_ptr<Node>> nodes;
+    std::vector<std::shared_ptr<OpNode>> ops;
     void forward();
-    void backward(Node* node, fp_t grad = 1);
+    void backward(std::shared_ptr<Node> node, fp_t grad = 1);
     inline void backward(NodeProxy node_proxy, fp_t grad = 1);
     void clear_grad();
 
     NodeProxy variable(fp_t value = 0, std::string name = "");
     NodeProxy constant(fp_t value = 0, std::string name = "");
 
-    Node* create_var(fp_t value = 0, std::string name = "");
-    Node* create_const(fp_t value = 0, std::string name = "");
-    Node* add(Node* a, Node* b);
-    Node* sub(Node* a, Node* b);
-    Node* mul(Node* a, Node* b);
-    Node* div(Node* a, Node* b);
-    Node* pow(Node* a, Node* b);
-    Node* max(Node* a, Node* b);
-    Node* min(Node* a, Node* b);
-    Node* log(Node* a);
-    Node* minus(Node* a);
-    Node* sin(Node* a);
-    Node* cos(Node* a);
-    Node* abs(Node* a);
+    std::shared_ptr<Node> create_var(fp_t value = 0, std::string name = "");
+    std::shared_ptr<Node> create_const(fp_t value = 0, std::string name = "");
+    std::shared_ptr<Node> add(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    std::shared_ptr<Node> sub(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    std::shared_ptr<Node> mul(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    std::shared_ptr<Node> div(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    std::shared_ptr<Node> pow(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    std::shared_ptr<Node> max(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    std::shared_ptr<Node> min(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    std::shared_ptr<Node> log(std::shared_ptr<Node> a);
+    std::shared_ptr<Node> minus(std::shared_ptr<Node> a);
+    std::shared_ptr<Node> sin(std::shared_ptr<Node> a);
+    std::shared_ptr<Node> cos(std::shared_ptr<Node> a);
+    std::shared_ptr<Node> abs(std::shared_ptr<Node> a);
 
-    Node* relu(Node* a);
-    Node* sigmoid(Node* a);
-    Node* tanh(Node* a);
+    std::shared_ptr<Node> relu(std::shared_ptr<Node> a);
+    std::shared_ptr<Node> sigmoid(std::shared_ptr<Node> a);
+    std::shared_ptr<Node> tanh(std::shared_ptr<Node> a);
 
     std::string to_graphviz();
 
@@ -86,7 +87,7 @@ struct Node {
     fp_t value;
     fp_t grad = 0;
     Graph* graph = nullptr;
-    OpNode* op = nullptr;
+    std::shared_ptr<OpNode> op = nullptr;
     std::string name = "";
     bool requires_grad = true;
     Node(Graph* g, std::string name = "", fp_t value = 0): value(value), graph(g), name(name) {}
@@ -103,9 +104,9 @@ private:
 // 1. operator overloading
 // 2. copy and move assignment
 struct NodeProxy{
-    Node* ptr;
+    std::shared_ptr<Node> ptr;
 
-    NodeProxy(Node* ptr): ptr(ptr) {}
+    NodeProxy(std::shared_ptr<Node> ptr): ptr(ptr) {}
     NodeProxy(Node& node): ptr(&node) {}
     NodeProxy(const NodeProxy& b): ptr(b.ptr) {}
     NodeProxy(const NodeProxy&& b): ptr(b.ptr) {}

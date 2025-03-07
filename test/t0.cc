@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include <functional>
+#include <memory>
 
 using namespace nn;
 
@@ -12,19 +13,19 @@ void m_assert(float a, float b) {
     }
 }
 
-void test_unary_op(Graph& g, std::function<Node*(Node*)> fn, fp_t input, fp_t expected_grad) {
-    Node* a = g.create_var(input);
-    Node* b = fn(a);
+void test_unary_op(Graph& g, std::function<std::shared_ptr<Node>(std::shared_ptr<Node>)> fn, fp_t input, fp_t expected_grad) {
+    auto a = g.create_var(input);
+    auto b = fn(a);
     g.forward();
     g.backward(b);
     m_assert(a->grad, expected_grad);
     g.clear_grad();
 }
 
-void test_binary_op(Graph& g, std::function<Node*(Node*, Node*)> fn, fp_t input1, fp_t input2, fp_t expected_grad1, fp_t expected_grad2) {
-    Node* a = g.create_var(input1);
-    Node* b = g.create_var(input2);
-    Node* c = fn(a, b);
+void test_binary_op(Graph& g, std::function<std::shared_ptr<Node>(std::shared_ptr<Node>, std::shared_ptr<Node>)> fn, fp_t input1, fp_t input2, fp_t expected_grad1, fp_t expected_grad2) {
+    auto a = g.create_var(input1);
+    auto b = g.create_var(input2);
+    auto c = fn(a, b);
     g.forward();
     g.backward(c);
     m_assert(a->grad, expected_grad1);
@@ -36,68 +37,68 @@ void test_binary_op(Graph& g, std::function<Node*(Node*, Node*)> fn, fp_t input1
 void t0() {
     Graph g;
     test_unary_op(
-        g, [&g](Node* n) { return g.minus(n); }, 
+        g, [&g](std::shared_ptr<Node> n) { return g.minus(n); }, 
         2, -1
         );
     test_unary_op(
-        g, [&g](Node* n) { return g.relu(n); },
+        g, [&g](std::shared_ptr<Node> n) { return g.relu(n); },
         2, 1
         );
     test_unary_op(
-        g, [&g](Node* n) { return g.relu(n); },
+        g, [&g](std::shared_ptr<Node> n) { return g.relu(n); },
         -2, 0
         );
     test_unary_op(
-        g, [&g](Node* n) { return g.sigmoid(n); },
+        g, [&g](std::shared_ptr<Node> n) { return g.sigmoid(n); },
         2, 0.1049935854035065
         );
     test_unary_op(
-        g, [&g](Node* n) { return g.abs(n) ; },
+        g, [&g](std::shared_ptr<Node> n) { return g.abs(n) ; },
         2, 1
     );
     test_unary_op(
-        g, [&g](Node* n) { return g.abs(n) ; },
+        g, [&g](std::shared_ptr<Node> n) { return g.abs(n) ; },
         -2, -1
     );
     test_unary_op(
-        g, [&g](Node* n) { return g.log(n); },
+        g, [&g](std::shared_ptr<Node> n) { return g.log(n); },
         2, 0.5
     );
     test_unary_op(
-        g, [&g](Node* n) { return g.sin(n); },
+        g, [&g](std::shared_ptr<Node> n) { return g.sin(n); },
         2, -0.4161468365471424
     );
     test_unary_op(
-        g, [&g](Node* n) { return g.cos(n); },
+        g, [&g](std::shared_ptr<Node> n) { return g.cos(n); },
         2, -0.9092974268256817
     );
 
     test_binary_op(
-        g, [&g](Node* a, Node* b) { return g.add(a, b); },
+        g, [&g](std::shared_ptr<Node> a, std::shared_ptr<Node> b) { return g.add(a, b); },
         2, 3, 1, 1
     );
     test_binary_op(
-        g, [&g](Node* a, Node* b) { return g.sub(a, b); },
+        g, [&g](std::shared_ptr<Node> a, std::shared_ptr<Node> b) { return g.sub(a, b); },
         2, 3, 1, -1
     );
     test_binary_op(
-        g, [&g](Node* a, Node* b) { return g.mul(a, b); },
+        g, [&g](std::shared_ptr<Node> a, std::shared_ptr<Node> b) { return g.mul(a, b); },
         2, 3, 3, 2
     );
     test_binary_op(
-        g, [&g](Node* a, Node* b) { return g.div(a, b); },
+        g, [&g](std::shared_ptr<Node> a, std::shared_ptr<Node> b) { return g.div(a, b); },
         2, 3, 1./3, -2./9
     );
     test_binary_op(
-        g, [&g](Node* a, Node* b) { return g.pow(a, b); },
+        g, [&g](std::shared_ptr<Node> a, std::shared_ptr<Node> b) { return g.pow(a, b); },
         2, 3, 3*pow(2, 2), pow(2, 3)*log(2)
     );
     test_binary_op(
-        g, [&g](Node* a, Node* b) { return g.max(a, b); },
+        g, [&g](std::shared_ptr<Node> a, std::shared_ptr<Node> b) { return g.max(a, b); },
         2, 3, 0, 1
     );
     test_binary_op(
-        g, [&g](Node* a, Node* b) { return g.min(a, b); },
+        g, [&g](std::shared_ptr<Node> a, std::shared_ptr<Node> b) { return g.min(a, b); },
         2, 3, 1, 0
     );
 

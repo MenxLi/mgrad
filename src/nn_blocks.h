@@ -14,14 +14,14 @@ enum class ActivationType {
 
 template <size_t N>
 struct ActivationLayer {
-    Node* input[N];
-    Node* output[N];
+    std::shared_ptr<Node> input[N];
+    std::shared_ptr<Node> output[N];
 };
 
 template <size_t N>
 ActivationLayer<N> activation_layer(
     Graph& graph, 
-    Node* input[N],
+    std::shared_ptr<Node> input[N],
     ActivationType type
 ){
     auto layer = ActivationLayer<N>();
@@ -39,10 +39,10 @@ ActivationLayer<N> activation_layer(
 template <size_t N_in, size_t N_out>
 struct LinearLayer {
     Graph* graph;
-    Node* input[N_in];
-    Node* output[N_out];
-    Node* weight[N_out][N_in];
-    Node* bias[N_out] = {nullptr};
+    std::shared_ptr<Node> input[N_in];
+    std::shared_ptr<Node> output[N_out];
+    std::shared_ptr<Node> weight[N_out][N_in];
+    std::shared_ptr<Node> bias[N_out] = {nullptr};
 
     LinearLayer(Graph& graph): graph(&graph) {};
 
@@ -82,7 +82,7 @@ struct LinearLayer {
 template <size_t N_in, size_t N_out>
 LinearLayer<N_in, N_out> linear_layer(
     Graph& graph, 
-    Node* input[N_in],
+    std::shared_ptr<Node> input[N_in],
     std::string name = ""
 ){
     static_assert(N_in > 0 && N_out > 0, "Invalid layer size");
