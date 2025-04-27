@@ -5,6 +5,21 @@ use std::rc::Rc;
 #[allow(non_camel_case_types)]
 type fp_t = f32;
 
+pub trait Number { fn to_fp(self) -> fp_t; }
+impl Number for i8    { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for i16   { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for i32   { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for i64   { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for isize { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for u8    { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for u16   { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for u32   { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for u64   { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for usize { fn to_fp(self) -> fp_t { self as fp_t } }
+impl Number for fp_t   { fn to_fp(self) -> fp_t { self } }
+impl Number for f64   { fn to_fp(self) -> fp_t { self as fp_t } }
+
+
 pub trait OpNode {
     fn forward(&self) -> NCell; // should return the output node, no need to set the from field
     fn backward(&self, grad: fp_t); // should invoke backward on the input nodes with proper gradients
@@ -34,6 +49,23 @@ impl NCell {
             &mut *(Rc::as_ptr(&self.0) as *mut Node)
         }
     }
+
+    pub fn set_requires_grad(&mut self, requires_grad: bool) {
+        let n = self.get_unsafe_mut();
+        n.requires_grad = requires_grad;
+    }
+    pub fn set_value<T:Number>(&mut self, value: T) {
+        let n = self.get_unsafe_mut();
+        n.value = value.to_fp();
+    }
+    pub fn set_grad<T:Number>(&mut self, grad: T) {
+        let n = self.get_unsafe_mut();
+        n.grad = grad.to_fp();
+    }
+    pub fn zero_grad(&mut self) {
+        self.set_grad(0.0);
+    }
+
 }
 impl Deref for NCell {
     type Target = Rc<Node>;
@@ -312,7 +344,7 @@ impl Neg for NCell {
 }
 
 impl NCell {
-    pub fn pow(self, other: NCell) -> NCell {
+    pub fn pow(&self, other: &NCell) -> NCell {
         let op = OpPow {
             a: NCell::clone(&self),
             b: NCell::clone(&other),
@@ -322,7 +354,7 @@ impl NCell {
         o
     }
 
-    pub fn abs(self) -> NCell {
+    pub fn abs(&self) -> NCell {
         let op = OpAbs {
             a: NCell::clone(&self),
         };
@@ -331,7 +363,7 @@ impl NCell {
         o
     }
 
-    pub fn log(self, base: NCell) -> NCell {
+    pub fn log(&self, base: &NCell) -> NCell {
         let op = OpLog {
             base: NCell::clone(&base),
             val: NCell::clone(&self),
@@ -341,24 +373,10 @@ impl NCell {
         o
     }
 
-    pub fn ln(self) -> NCell {
-        self.log(nn::constant(std::f32::consts::E))
+    pub fn ln(&self) -> NCell {
+        self.log(&nn::constant(std::f32::consts::E))
     }
 }
-
-pub trait Number { fn to_fp(self) -> fp_t; }
-impl Number for i8    { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for i16   { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for i32   { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for i64   { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for isize { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for u8    { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for u16   { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for u32   { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for u64   { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for usize { fn to_fp(self) -> fp_t { self as fp_t } }
-impl Number for fp_t   { fn to_fp(self) -> fp_t { self } }
-impl Number for f64   { fn to_fp(self) -> fp_t { self as fp_t } }
 
 pub mod nn {
     use super::*;
@@ -379,22 +397,75 @@ pub mod nn {
 mod test {
     use super::*;
 
+    fn assert_close(a: fp_t, b: fp_t, epsilon: fp_t) {
+        assert!((a - b).abs() < epsilon, "assertion failed: {} != {}", a, b);
+    }
+
     #[test]
     fn test_variable() {
         let x = nn::variable(5.0);
         assert_eq!(x.value, 5.0);
+        assert_eq!(x.grad, 0.0);
+        assert_eq!(x.requires_grad, true);
+    }
+
+    #[test]
+    fn test_constant() {
+        let x = nn::constant(5.0);
+        assert_eq!(x.value, 5.0);
+        assert_eq!(x.requires_grad, false);
     }
 
 
     #[test]
-    fn test_node() {
-        let a = NCell::from(Node::new(1.0));
-        let b = NCell::from(Node::new(2.0));
+    fn test_simple() {
+
+        let mut a = NCell::from(Node::new(1.0));
+        let mut b = NCell::from(Node::new(2.0));
         let c = &a + &b;
-        c.backward(1.0); // backward pass with gradient 1.0
+        c.backward(1.0);
 
         assert_eq!(c.value, 3.0);
         assert_eq!(a.grad, 1.0);
         assert_eq!(b.grad, 1.0);
+        a.zero_grad();
+        b.zero_grad();
+
+        let d = &a * &b;
+        d.backward(2.0);    // backward pass with gradient 2.0
+        assert_eq!(d.value, 2.0);
+        assert_eq!(a.grad, 4.0);
+        assert_eq!(b.grad, 2.0);
+        a.zero_grad();
+        b.zero_grad();
+
+        let e = &a / &b;
+        e.backward(1.0);
+        assert_eq!(e.value, 0.5);
+        assert_eq!(a.grad, 0.5);
+        assert_eq!(b.grad, -0.25);
+        a.zero_grad();
+        b.zero_grad();
+
+        let f = &a.pow(&b);
+        f.backward(1.0);
+        assert_eq!(f.value, 1.0);
+        assert_eq!(a.grad, 2.0);
+        assert_eq!(b.grad, 0.0);
+        a.zero_grad();
+        b.zero_grad();
+
+        let g = &b.abs();
+        g.backward(1.0);
+        assert_eq!(g.value, 2.0);
+        assert_eq!(b.grad, 1.0);
+        b.zero_grad();
+
+        let h = &a.log(&b);
+        h.backward(1.0);
+        assert_eq!(h.value, 0.0);
+        assert_close(a.grad, 1.44269, 1e-3);
+        assert_close(b.grad, -0.0, 1e-3);
+
     }
 }
