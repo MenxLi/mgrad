@@ -2,6 +2,9 @@
 name = "mgrad"
 version = "0.1.0"
 edition = "2024"
+authors = ["Li, Mengxun"]
+description = "A minimal automatic differentiation library."
+license = "MIT"
 
 [profile.release]
 opt-level = 3
