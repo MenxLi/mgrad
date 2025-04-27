@@ -8,7 +8,7 @@ pub trait Number {
     fn to_fp(self) -> fp_t;
 }
 pub trait Nodish {
-    fn to_ncell(&self) -> Node;
+    fn to_node(&self) -> Node;
 }
 macro_rules!  adapt_num_t{
     ($t:ty) => {
@@ -16,7 +16,10 @@ macro_rules!  adapt_num_t{
             fn to_fp(self) -> fp_t { self as fp_t }
         }
         impl Nodish for $t {
-            fn to_ncell(&self) -> Node { nn::constant(self.clone()) }
+            fn to_node(&self) -> Node { nn::constant(self.clone()) }
+        }
+        impl Nodish for &$t {
+            fn to_node(&self) -> Node { nn::constant((*self).clone()) }
         }
     };
 }
@@ -72,7 +75,12 @@ pub trait OpNode {
 
 pub struct Node(Rc<RawNode>);
 impl Node {
-    pub fn clone(r: &Node) -> Self {
+
+    pub fn raw(&self) -> &RawNode {
+        self.0.as_ref()
+    }
+
+    fn clone(r: &Node) -> Self {
         Node(Rc::clone(&r.0))
     }
 
@@ -119,7 +127,12 @@ impl Deref for Node {
     }
 }
 impl Nodish for Node {
-    fn to_ncell(&self) -> Node {
+    fn to_node(&self) -> Node {
+        Node::clone(self)
+    }
+}
+impl Nodish for &Node {
+    fn to_node(&self) -> Node {
         Node::clone(self)
     }
 }
@@ -388,16 +401,40 @@ macro_rules! impl_op_num_2_t {
                 OpImpl::$name_impl(&nn::constant(self), other)
             }
         }
+        impl $op<Node> for &$t {
+            type Output = Node;
+            fn $name(self, other: Node) -> Self::Output {
+                OpImpl::$name_impl(&nn::constant(*self), &other)
+            }
+        }
+        impl $op<&Node> for &$t {
+            type Output = Node;
+            fn $name(self, other: &Node) -> Self::Output {
+                OpImpl::$name_impl(&nn::constant(*self), other)
+            }
+        }
         impl $op<$t> for Node {
             type Output = Node;
             fn $name(self, other: $t) -> Self::Output {
                 OpImpl::$name_impl(&self, &nn::constant(other))
             }
         }
+        impl $op<&$t> for Node {
+            type Output = Node;
+            fn $name(self, other: &$t) -> Self::Output {
+                OpImpl::$name_impl(&self, &nn::constant(*other))
+            }
+        }
         impl $op<$t> for &Node {
             type Output = Node;
             fn $name(self, other: $t) -> Self::Output {
                 OpImpl::$name_impl(self, &nn::constant(other))
+            }
+        }
+        impl $op<&$t> for &Node {
+            type Output = Node;
+            fn $name(self, other: &$t) -> Self::Output {
+                OpImpl::$name_impl(self, &nn::constant(*other))
             }
         }
     };
@@ -447,10 +484,10 @@ impl Neg for &Node {
 }
 
 impl Node {
-    pub fn pow(&self, other: &impl Nodish) -> Node {
+    pub fn pow(&self, other: impl Nodish) -> Node {
         let op = OpPow {
             a: Node::clone(&self),
-            b: other.to_ncell(),
+            b: other.to_node(),
         };
         let o = op.forward();
         o.get_unsafe_mut().from = Some(Box::new(op));
@@ -466,9 +503,9 @@ impl Node {
         o
     }
 
-    pub fn log(&self, base: &impl Nodish) -> Node {
+    pub fn log(&self, base: impl Nodish) -> Node {
         let op = OpLog {
-            base: base.to_ncell(),
+            base: base.to_node(),
             val: Node::clone(&self),
         };
         let o = op.forward();
