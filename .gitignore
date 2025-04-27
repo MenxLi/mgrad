@@ -7,3 +7,6 @@ compile_flags.txt
 *.exe
 *.bmp
 .DS_Store
+
+target
+Cargo.lock
