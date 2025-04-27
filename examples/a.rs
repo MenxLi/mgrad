@@ -1,12 +1,10 @@
 use mgrad::nn;
 
 fn main() {
-    let a = nn::variable(2);
-    let b = nn::variable(3);
+    let x = nn::variable(1);
+    let mut y: nn::Node = x.pow(&2) * (x.sin() + 1);
+    y = y.ln();
+    y.backward(1);
 
-    let c = &a + &b;
-    c.backward(1.0);
-
-    assert_eq!(c.value, 5.0);
-    assert_eq!(a.grad, 1.0);
+    println!("The gradient of y=ln(x^2 * (sin(x) + 1)) at x=1 is: {:?}", x.grad);
 }
