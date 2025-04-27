@@ -47,8 +47,8 @@ pub struct RawNode {
 impl RawNode {
     pub fn new(value: fp_t) -> Self {
         RawNode {
+            value,
             from: None,
-            value: value,
             grad: 0.0,
             requires_grad: true,
         }
@@ -69,8 +69,11 @@ impl RawNode {
 
 
 pub trait OpNode {
-    fn forward(&self) -> Node; // should return the output node, no need to set the from field
-    fn backward(&self, grad: fp_t); // should invoke backward on the input nodes with proper gradients
+    /// return the output node, this does not set the `from` field of the output node
+    fn forward(&self) -> Node; 
+
+    /// should invoke backward on the input nodes with proper gradients
+    fn backward(&self, grad: fp_t); 
 }
 
 pub struct Node(Rc<RawNode>);
@@ -88,16 +91,23 @@ impl Node {
         Node(Rc::new(node))
     }
 
+    /// Note: While this function takes immutable reference, 
+    /// it will mutate the internal state of the node.
     pub fn backward<T: Number>(&self, grad: T) {
         let n = self.get_unsafe_mut();
         n.backward(grad.to_fp());
     }
 
-    pub fn copy(&self) -> Self {
+    /// Get a shadow of the node, which is a clone of the node referring to the same underlying data.  
+    /// We can get mutable reference for each shadow node to mutate the underlying data.  
+    /// Should keep as less shadow nodes as possible.  
+    pub fn shadow(&self) -> Self {
         Node(Rc::clone(&self.0))
     }
 
-    fn get_unsafe_mut(&self) -> &mut RawNode {
+    /// Get a mutable reference to the underlying data of the node.  
+    /// Allows mutating the data of the `Rc<RawNode>` directly.  
+    pub fn get_unsafe_mut(&self) -> &mut RawNode {
         unsafe {
             &mut *(Rc::as_ptr(&self.0) as *mut RawNode)
         }
@@ -545,17 +555,33 @@ impl Node {
     }
 }
 
+/// Main module most users will interact with.
 pub mod nn {
     use super::*;
 
     // bring the Node type into the nn module
     pub use super::Node;
 
+    /// Creates a new variable node with the given value.
+    /// Gradients will be computed for this node during backpropagation.
+    /// 
+    /// # Examples
+    /// ```
+    /// let a = nn::variable(5);
+    /// let b = nn::variable(3);
+    /// let c = &a * &b;
+    /// c.backward(1);
+    /// 
+    /// assert_eq!(c.value, 8.0);
+    /// assert_eq!(a.grad, 3.0);
+    /// ```
     pub fn variable<T: Number>(value: T) -> Node {
         let n = RawNode::new(value.to_fp());
         Node::from(n)
     }
 
+    /// Creates a new constant node with the given value.
+    /// Gradients will not be computed for this node during backpropagation.
     pub fn constant<T: Number>(value: T) -> Node {
         let mut n = RawNode::new(value.to_fp());
         n.requires_grad = false;

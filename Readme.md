@@ -1,5 +1,6 @@
 A minimal automatic differentiation library. Just for fun...
 
+All code are in a single file, `src/lib.rs` to easily copy-paste into other projects.  
 Please refer to `examples/a.rs` for usage:
 ```rust
 use mgrad::nn;
@@ -20,3 +21,5 @@ fn main() {
 Note that `backward()` is called with immutable declared variables to update their gradients.  
 This is because some unsafe code is used to avoid `RefCell` overhead.  
 Theoretically this is unsafe, but as long as we are not doing parallel computations on the same graph, it should behave correctly.
+
+Run with `cargo doc --open` to see the documentation.
