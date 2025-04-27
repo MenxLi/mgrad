@@ -1,6 +1,6 @@
 A minimal automatic differentiation library. Just for fun...
 
-All code are in a single file, `src/lib.rs` to easily copy-paste into other projects.  
+All code are in a single file (`src/mgrad.rs`) to easily copy-paste into other projects.  
 Please refer to `examples/a.rs` for usage:
 ```rust
 use mgrad::nn;
