@@ -1,5 +1,5 @@
-use std::cell::{Ref, RefCell, RefMut};
-use std::ops::{Add, Div, Mul, Sub};
+// use std::cell::{Ref, RefCell, RefMut};
+use std::ops::{Add, Deref, Div, Mul, Sub};
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
@@ -10,19 +10,35 @@ pub trait OpNode {
     fn backward(&self, grad: fp_t); // should invoke backward on the input nodes with proper gradients
 }
 
-pub struct NCell(Rc<RefCell<Node>>);
+pub struct NCell(Rc<Node>);
 impl NCell {
-    pub fn from(node: Node) -> Self {
-        NCell(Rc::new(RefCell::new(node)))
-    }
-    pub fn borrow(&self) -> Ref<Node> {
-        self.0.borrow()
-    }
-    pub fn borrow_mut(&self) -> RefMut<Node> {
-        self.0.borrow_mut()
-    }
     pub fn clone(r: &NCell) -> Self {
         NCell(Rc::clone(&r.0))
+    }
+
+    pub fn from(node: Node) -> Self {
+        NCell(Rc::new(node))
+    }
+
+    pub fn backward(&self, grad: fp_t) {
+        let n = self.get_unsafe_mut();
+        n.backward(grad);
+    }
+
+    pub fn copy(&self) -> Self {
+        NCell(Rc::clone(&self.0))
+    }
+
+    fn get_unsafe_mut(&self) -> &mut Node {
+        unsafe {
+            &mut *(Rc::as_ptr(&self.0) as *mut Node)
+        }
+    }
+}
+impl Deref for NCell {
+    type Target = Rc<Node>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -63,13 +79,13 @@ struct OpAdd {
 }
 impl OpNode for OpAdd {
     fn forward(&self) -> NCell {
-        let n = Node::new(self.a.borrow().value + self.b.borrow().value);
+        let n = Node::new(self.a.value + self.b.value);
         NCell::from(n)
     }
 
     fn backward(&self, grad: fp_t) {
-        let mut a = self.a.borrow_mut();
-        let mut b = self.b.borrow_mut();
+        let a = self.a.get_unsafe_mut();
+        let b = self.b.get_unsafe_mut();
         a.backward(grad);
         b.backward(grad);
     }
@@ -81,13 +97,13 @@ struct OpSub {
 }
 impl OpNode for OpSub {
     fn forward(&self) -> NCell {
-        let n = Node::new(self.a.borrow().value - self.b.borrow().value);
+        let n = Node::new(self.a.value - self.b.value);
         NCell::from(n)
     }
 
     fn backward(&self, grad: fp_t) {
-        let mut a = self.a.borrow_mut();
-        let mut b = self.b.borrow_mut();
+        let a = self.a.get_unsafe_mut();
+        let b = self.b.get_unsafe_mut();
         a.backward(grad);
         b.backward(-grad);
     }
@@ -99,13 +115,13 @@ struct OpMul {
 }
 impl OpNode for OpMul {
     fn forward(&self) -> NCell {
-        let n = Node::new(self.a.borrow().value * self.b.borrow().value);
+        let n = Node::new(self.a.value * self.b.value);
         NCell::from(n)
     }
 
     fn backward(&self, grad: fp_t) {
-        let mut a = self.a.borrow_mut();
-        let mut b = self.b.borrow_mut();
+        let a = self.a.get_unsafe_mut();
+        let b = self.b.get_unsafe_mut();
         a.backward(grad * b.value);
         b.backward(grad * a.value);
     }
@@ -117,14 +133,14 @@ struct OpDiv {
 }
 impl OpNode for OpDiv {
     fn forward(&self) -> NCell {
-        let n = Node::new(self.a.borrow().value / self.b.borrow().value);
+        let n = Node::new(self.a.value / self.b.value);
         NCell::from(n)
     }
 
     fn backward(&self, grad: fp_t) {
-        let mut a = self.a.borrow_mut();
-        let mut b = self.b.borrow_mut();
-        let b_sq = self.b.borrow().value * self.b.borrow().value;
+        let b_sq = self.b.value * self.b.value;
+        let a = self.a.get_unsafe_mut();
+        let b = self.b.get_unsafe_mut();
         a.backward(grad / b.value);
         b.backward(-grad * a.value / b_sq);
     }
@@ -136,15 +152,15 @@ struct OpPow {
 }
 impl OpNode for OpPow {
     fn forward(&self) -> NCell {
-        let n = Node::new(self.a.borrow().value.powf(self.b.borrow().value));
+        let n = Node::new(self.a.value.powf(self.b.value));
         NCell::from(n)
     }
 
     fn backward(&self, grad: fp_t) {
-        let mut a = self.a.borrow_mut();
-        let mut b = self.b.borrow_mut();
-        a.backward(grad * b.value * self.a.borrow().value.powf(b.value - 1.0));
-        b.backward(grad * a.value.ln() * self.a.borrow().value.powf(self.b.borrow().value));
+        let a = self.a.get_unsafe_mut();
+        let b = self.b.get_unsafe_mut();
+        a.backward(grad * b.value * self.a.value.powf(b.value - 1.0));
+        b.backward(grad * a.value.ln() * self.a.value.powf(self.b.value));
     }
 }
 
@@ -157,7 +173,7 @@ impl OpImpl {
             b: NCell::clone(b),
         };
         let o = op.forward();
-        o.borrow_mut().from = Some(Box::new(op));
+        o.get_unsafe_mut().from = Some(Box::new(op));
         o
     }
 
@@ -167,7 +183,7 @@ impl OpImpl {
             b: NCell::clone(b),
         };
         let o = op.forward();
-        o.borrow_mut().from = Some(Box::new(op));
+        o.get_unsafe_mut().from = Some(Box::new(op));
         o
     }
 
@@ -177,7 +193,7 @@ impl OpImpl {
             b: NCell::clone(b),
         };
         let o = op.forward();
-        o.borrow_mut().from = Some(Box::new(op));
+        o.get_unsafe_mut().from = Some(Box::new(op));
         o
     }
 
@@ -187,7 +203,7 @@ impl OpImpl {
             b: NCell::clone(b),
         };
         let o = op.forward();
-        o.borrow_mut().from = Some(Box::new(op));
+        o.get_unsafe_mut().from = Some(Box::new(op));
         o
     }
 }
@@ -252,7 +268,7 @@ impl NCell {
             b: NCell::clone(&other),
         };
         let o = op.forward();
-        o.borrow_mut().from = Some(Box::new(op));
+        o.get_unsafe_mut().from = Some(Box::new(op));
         o
     }
 }
@@ -293,7 +309,7 @@ mod test {
     #[test]
     fn test_variable() {
         let x = nn::variable(5.0);
-        assert_eq!(x.borrow().value, 5.0);
+        assert_eq!(x.value, 5.0);
     }
 
 
@@ -302,10 +318,10 @@ mod test {
         let a = NCell::from(Node::new(1.0));
         let b = NCell::from(Node::new(2.0));
         let c = &a + &b;
-        c.borrow_mut().backward(1.0); // backward pass with gradient 1.0
+        c.backward(1.0); // backward pass with gradient 1.0
 
-        assert_eq!(c.borrow().value, 3.0);
-        assert_eq!(a.borrow().grad, 1.0);
-        assert_eq!(b.borrow().grad, 1.0);
+        assert_eq!(c.value, 3.0);
+        assert_eq!(a.grad, 1.0);
+        assert_eq!(b.grad, 1.0);
     }
 }
