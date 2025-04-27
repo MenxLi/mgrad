@@ -1,5 +1,5 @@
 // use std::cell::{Ref, RefCell, RefMut};
-use std::ops::{Add, Deref, Div, Mul, Sub};
+use std::ops::{Add, Deref, Div, Mul, Sub, Neg};
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
@@ -84,10 +84,8 @@ impl OpNode for OpAdd {
     }
 
     fn backward(&self, grad: fp_t) {
-        let a = self.a.get_unsafe_mut();
-        let b = self.b.get_unsafe_mut();
-        a.backward(grad);
-        b.backward(grad);
+        self.a.backward(grad);
+        self.b.backward(grad);
     }
 }
 
@@ -102,10 +100,8 @@ impl OpNode for OpSub {
     }
 
     fn backward(&self, grad: fp_t) {
-        let a = self.a.get_unsafe_mut();
-        let b = self.b.get_unsafe_mut();
-        a.backward(grad);
-        b.backward(-grad);
+        self.a.backward(grad);
+        self.b.backward(-grad);
     }
 }
 
@@ -120,10 +116,8 @@ impl OpNode for OpMul {
     }
 
     fn backward(&self, grad: fp_t) {
-        let a = self.a.get_unsafe_mut();
-        let b = self.b.get_unsafe_mut();
-        a.backward(grad * b.value);
-        b.backward(grad * a.value);
+        self.a.backward(grad * self.b.value);
+        self.b.backward(grad * self.a.value);
     }
 }
 
@@ -139,10 +133,8 @@ impl OpNode for OpDiv {
 
     fn backward(&self, grad: fp_t) {
         let b_sq = self.b.value * self.b.value;
-        let a = self.a.get_unsafe_mut();
-        let b = self.b.get_unsafe_mut();
-        a.backward(grad / b.value);
-        b.backward(-grad * a.value / b_sq);
+        self.a.backward(grad / self.b.value);
+        self.b.backward(-grad * self.a.value / b_sq);
     }
 }
 
@@ -157,10 +149,52 @@ impl OpNode for OpPow {
     }
 
     fn backward(&self, grad: fp_t) {
-        let a = self.a.get_unsafe_mut();
-        let b = self.b.get_unsafe_mut();
-        a.backward(grad * b.value * self.a.value.powf(b.value - 1.0));
-        b.backward(grad * a.value.ln() * self.a.value.powf(self.b.value));
+        self.a.backward(grad * self.b.value * self.a.value.powf(self.b.value - 1.0));
+        self.b.backward(grad * self.a.value.ln() * self.a.value.powf(self.b.value));
+    }
+}
+
+struct OpNeg {
+    a: NCell,
+}
+impl OpNode for OpNeg {
+    fn forward(&self) -> NCell {
+        let n = Node::new(-self.a.value);
+        NCell::from(n)
+    }
+
+    fn backward(&self, grad: fp_t) {
+        self.a.backward(-grad);
+    }
+}
+
+struct OpAbs {
+    a: NCell,
+}
+impl OpNode for OpAbs {
+    fn forward(&self) -> NCell {
+        let n = Node::new(self.a.value.abs());
+        NCell::from(n)
+    }
+
+    fn backward(&self, grad: fp_t) {
+        self.a.backward(grad * self.a.value.signum());
+    }
+}
+
+struct OpLog {
+    base: NCell,
+    val: NCell,
+}
+impl OpNode for OpLog {
+    fn forward(&self) -> NCell {
+        let n = Node::new(self.val.value.log(self.base.value));
+        NCell::from(n)
+    }
+
+    fn backward(&self, grad: fp_t) {
+        self.val.backward(grad / (self.val.value * self.base.value.ln()));
+        self.base.backward(-grad * self.val.value.ln() / (self.base.value * (self.base.value.ln() * self.base.value.ln())));
     }
 }
 
@@ -201,6 +235,15 @@ impl OpImpl {
         let op = OpDiv {
             a: NCell::clone(a),
             b: NCell::clone(b),
+        };
+        let o = op.forward();
+        o.get_unsafe_mut().from = Some(Box::new(op));
+        o
+    }
+
+    fn neg_impl(a: &NCell) -> NCell {
+        let op = OpNeg {
+            a: NCell::clone(a),
         };
         let o = op.forward();
         o.get_unsafe_mut().from = Some(Box::new(op));
@@ -261,6 +304,13 @@ impl Div for &NCell {
     }
 }
 
+impl Neg for NCell {
+    type Output = NCell;
+    fn neg(self) -> Self::Output {
+        OpImpl::neg_impl(&self)
+    }
+}
+
 impl NCell {
     pub fn pow(self, other: NCell) -> NCell {
         let op = OpPow {
@@ -270,6 +320,29 @@ impl NCell {
         let o = op.forward();
         o.get_unsafe_mut().from = Some(Box::new(op));
         o
+    }
+
+    pub fn abs(self) -> NCell {
+        let op = OpAbs {
+            a: NCell::clone(&self),
+        };
+        let o = op.forward();
+        o.get_unsafe_mut().from = Some(Box::new(op));
+        o
+    }
+
+    pub fn log(self, base: NCell) -> NCell {
+        let op = OpLog {
+            base: NCell::clone(&base),
+            val: NCell::clone(&self),
+        };
+        let o = op.forward();
+        o.get_unsafe_mut().from = Some(Box::new(op));
+        o
+    }
+
+    pub fn ln(self) -> NCell {
+        self.log(nn::constant(std::f32::consts::E))
     }
 }
 
