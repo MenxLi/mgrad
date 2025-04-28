@@ -119,6 +119,7 @@ impl Node {
         Node(Rc::new(node))
     }
 
+    /// Update the gradient for all leaf nodes in the graph.  
     /// Note: While this function takes immutable reference, 
     /// it will mutate the internal state of the node of the same graph.
     pub fn backward<T: Number>(&self, grad: T) {
