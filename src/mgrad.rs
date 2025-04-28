@@ -96,7 +96,7 @@ impl Node {
     }
 
     /// Note: While this function takes immutable reference, 
-    /// it will mutate the internal state of the node.
+    /// it will mutate the internal state of the node of the same graph.
     pub fn backward<T: Number>(&self, grad: T) {
         let n = self.get_unsafe_mut();
         n.backward(grad.to_fp());
@@ -104,13 +104,13 @@ impl Node {
 
     /// Get a shadow of the node, which is a clone of the node referring to the same underlying data.  
     /// We can get mutable reference for each shadow node to mutate the underlying data.  
-    /// Should keep as less shadow nodes as possible.  
+    /// Thus, should keep as less shadow nodes as possible.  
     pub fn shadow(&self) -> Self {
         Node(Rc::clone(&self.0))
     }
 
     /// Get a mutable reference to the underlying data of the node.  
-    /// Allows mutating the data of the `Rc<RawNode>` directly.  
+    /// Allows mutating the data of the `Rc<RawNode>` directly, to avoid the `RefCell` overhead.
     pub fn get_unsafe_mut(&self) -> &mut RawNode {
         unsafe {
             &mut *(Rc::as_ptr(&self.0) as *mut RawNode)
@@ -572,12 +572,14 @@ pub mod nn {
     /// 
     /// # Examples
     /// ```
+    /// use mgrad::nn;
+    /// 
     /// let a = nn::variable(5);
     /// let b = nn::variable(3);
     /// let c = &a * &b;
     /// c.backward(1);
     /// 
-    /// assert_eq!(c.value, 8.0);
+    /// assert_eq!(c.value, 15.0);
     /// assert_eq!(a.grad, 3.0);
     /// ```
     pub fn variable<T: Number>(value: T) -> Node {
