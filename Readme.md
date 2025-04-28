@@ -16,4 +16,5 @@ fn main() {
 }
 ```
 
-Run with `cargo doc --open` to see the documentation.
+Run with `cargo doc --open` to see the documentation.  
+More examples can be found in the `examples` folder.  
