@@ -3,6 +3,7 @@
 /// File created: 2025-04-26
 
 use std::ops::{Deref, Add, Div, Mul, Sub, Neg};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
@@ -69,15 +70,38 @@ impl RawNode {
             self.grad = 0.0; // reset the gradient after backpropagation
         }
     }
+
+    fn address(&self) -> usize {
+        self as *const Self as *const () as usize
+    }
 }
 
 
 pub trait OpNode {
-    /// return the output node, this does not set the `from` field of the output node
-    fn forward(&self) -> Node; 
+    fn name(&self) -> &'static str {
+        let full_name = std::any::type_name::<Self>();
+        full_name.rsplit_once("::").map_or(full_name, |(_, name)| name)
+    }
+
+    /// for backtracking, we need to know the input nodes
+    fn inputs(&self) -> Vec<&Node>;
+
+    /// only calculate the value of the output node
+    fn forward_value(&self) -> fp_t; 
+
+    /// calculate the value of the output node, 
+    /// and return the output node, this does not set the `from` field of the output node
+    fn forward(&self) -> Node {
+        let n = RawNode::new(self.forward_value());
+        Node::from(n)
+    }
 
     /// should invoke backward on the input nodes with proper gradients
     fn backward(&self, grad: fp_t); 
+
+    fn address(&self) -> usize {
+        self as *const Self as *const () as usize
+    }
 }
 
 pub struct Node(Rc<RawNode>);
@@ -115,6 +139,13 @@ impl Node {
         unsafe {
             &mut *(Rc::as_ptr(&self.0) as *mut RawNode)
         }
+    }
+
+    /// Check if the node is a leaf node.
+    /// A leaf node is a node that is not the result of an operation, 
+    /// and will have gradients computed for it.
+    pub fn is_leaf(&self) -> bool {
+        self.from.is_none()
     }
 
     pub fn set_requires_grad(&mut self, requires_grad: bool) {
@@ -157,9 +188,12 @@ struct OpAdd {
     b: Node,
 }
 impl OpNode for OpAdd {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value + self.b.value);
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a, &self.b]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value + self.b.value
     }
 
     fn backward(&self, grad: fp_t) {
@@ -173,9 +207,12 @@ struct OpSub {
     b: Node,
 }
 impl OpNode for OpSub {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value - self.b.value);
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a, &self.b]
+    }
+    
+    fn forward_value(&self) -> fp_t {
+        self.a.value - self.b.value
     }
 
     fn backward(&self, grad: fp_t) {
@@ -189,9 +226,12 @@ struct OpMul {
     b: Node,
 }
 impl OpNode for OpMul {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value * self.b.value);
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a, &self.b]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value * self.b.value
     }
 
     fn backward(&self, grad: fp_t) {
@@ -205,9 +245,12 @@ struct OpDiv {
     b: Node,
 }
 impl OpNode for OpDiv {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value / self.b.value);
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a, &self.b]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value / self.b.value
     }
 
     fn backward(&self, grad: fp_t) {
@@ -222,9 +265,12 @@ struct OpPow {
     b: Node,
 }
 impl OpNode for OpPow {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value.powf(self.b.value));
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a, &self.b]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value.powf(self.b.value)
     }
 
     fn backward(&self, grad: fp_t) {
@@ -237,9 +283,12 @@ struct OpNeg {
     a: Node,
 }
 impl OpNode for OpNeg {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(-self.a.value);
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        -self.a.value
     }
 
     fn backward(&self, grad: fp_t) {
@@ -251,9 +300,12 @@ struct OpAbs {
     a: Node,
 }
 impl OpNode for OpAbs {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value.abs());
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value.abs()
     }
 
     fn backward(&self, grad: fp_t) {
@@ -266,9 +318,12 @@ struct OpLog {
     val: Node,
 }
 impl OpNode for OpLog {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.val.value.log(self.base.value));
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.base, &self.val]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.val.value.log(self.base.value)
     }
 
     fn backward(&self, grad: fp_t) {
@@ -281,9 +336,12 @@ struct OpSin {
     a: Node,
 }
 impl OpNode for OpSin {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value.sin());
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value.sin()
     }
 
     fn backward(&self, grad: fp_t) {
@@ -295,9 +353,12 @@ struct OpCos {
     a: Node,
 }
 impl OpNode for OpCos {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value.cos());
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value.cos()
     }
 
     fn backward(&self, grad: fp_t) {
@@ -309,9 +370,12 @@ struct OpTan {
     a: Node,
 }
 impl OpNode for OpTan {
-    fn forward(&self) -> Node {
-        let n = RawNode::new(self.a.value.tan());
-        Node::from(n)
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value.tan()
     }
 
     fn backward(&self, grad: fp_t) {
@@ -559,6 +623,170 @@ impl Node {
     }
 }
 
+
+// ========================== Graph ==========================
+
+struct GraphOpItem<'a>{
+    op: &'a Box<dyn OpNode>,
+    inputs: Vec<&'a Node>,
+    output: &'a Node,
+}
+impl<'a> GraphOpItem<'a> {
+    pub fn from(output: &'a Node) -> Option<Self> {
+        if output.is_leaf() {
+            return None;
+        }
+        let inputs = output.from.as_ref().unwrap().inputs();
+        let op: &Box<dyn OpNode> = output.from.as_ref().unwrap();
+        Some(GraphOpItem {
+            op, 
+            inputs,
+            output,
+        })
+    }
+}
+pub struct Graph<'a> {
+    op_chain: Vec<GraphOpItem<'a>>
+}
+
+impl<'a> Graph<'a> {
+    /// Construct a graph from the given node (should be the output node of a computation).
+    /// This will traverse the graph from the given node to the leaf nodes.
+    pub fn from_trace(node: &'a Node) -> Option<Self> {
+        let first_op = GraphOpItem::from(node);
+        if first_op.is_none() {
+            return None;
+        }
+
+        // Trace the graph from root to leaf, using breadth first search
+        let mut op_chain : Vec<GraphOpItem<'a>> = Vec::new();
+        let mut to_add = vec![first_op.unwrap()];
+        while !to_add.is_empty() {
+            let mut next_level: Vec<GraphOpItem<'a>> = Vec::new();
+            for this_level_op in to_add.drain(..) {
+                for this_level_inp in &this_level_op.inputs {
+                    if let Some(next_level_item) = GraphOpItem::from(this_level_inp){
+                        next_level.push(next_level_item);
+                    }
+                }
+                op_chain.push(this_level_op);
+            }
+            to_add.append(&mut next_level);
+        }
+        // leaf -> root
+        op_chain.reverse();
+
+        // de-duplicate the op_chain
+        // only keep the first occurrence of each op 
+        // TODO: proof this is correct and necessary...
+        let mut op_chain_final: Vec<GraphOpItem<'a>> = Vec::new();
+        let mut seen: HashSet<usize> = HashSet::new();
+        for op_item in op_chain {
+            if seen.contains(&op_item.op.address()) {
+                continue;
+            }
+            seen.insert(op_item.op.address());
+            op_chain_final.push(op_item);
+        }
+
+        Some(Graph{
+            op_chain: op_chain_final,
+        })
+    }
+
+    /// Fast-forward the graph, from leaf to root, 
+    /// without reallocating the nodes.
+    pub fn forward(&mut self) {
+        for op_item in &mut self.op_chain {
+            op_item.output.get_unsafe_mut().value = op_item.op.forward_value();
+        }
+    }
+
+    pub fn to_graphvis(&self) -> String {
+        let mut t = String::new();
+        t += "digraph G {\n";
+        t += "  node [ shape=box, fixedsize=false, color=black, fontcolor=black, fontsize=12, fillcolor=white, style=filled ];\n";
+        t += "  edge [ color=black ];\n";
+        t += "  rankdir=TB;\n";
+        t += "  nodesep=0.5;\n";
+
+        let opnode_id = |op: &Box<dyn OpNode>| -> String {
+            format!("{}", op.address())
+        };
+
+        let node_id = |node: &Node| -> String {
+            format!("{}", node.address())
+        };
+
+        let draw_op_node = |op: &Box<dyn OpNode>| -> String {
+            format!(
+                "  {} [label=\"{}\", color=blue];\n", 
+                opnode_id(op), 
+                op.name()
+                    .rsplit_once("Op")
+                    .expect("OpNode name should start with Op")
+                    .1
+                )
+        };
+
+        let draw_node = |node: &Node| -> String {
+            let format_val = |val: fp_t| -> String {
+                if val.abs() < 1e-3 {
+                    format!("{:.3e}", val)
+                } else if val.abs() > 1e3 {
+                    format!("{:.3e}", val)
+                } else {
+                    format!("{:.2}", val)
+                }
+            };
+            let get_node_label = |node: &Node| -> String {
+                let mut ret = String::new();
+                // ret += &format!("{}@", node_id(node));
+                ret += &format_val(node.value);
+                if node.requires_grad && node.grad != 0.0 {
+                    ret += &format!(", ∂={}", format_val(node.grad));
+                }
+                if !node.requires_grad {
+                    ret += ", const";
+                }
+                ret
+            };
+            format!("  {} [label=\"{}\"];\n", node_id(node), get_node_label(node))
+        };
+
+        let mut all_nodes : HashMap<String, &Node> = HashMap::new();
+        self.op_chain.iter()
+            .map(|op_item| {
+                all_nodes.insert(node_id(op_item.output), op_item.output);
+                for n in &op_item.inputs {
+                    all_nodes.insert(node_id(n), n);
+                }
+            }).count();
+        
+        for (_, node) in all_nodes.iter() {
+            t += &draw_node(node);
+        }
+
+        self.op_chain.iter()
+            .map(|op_item| {
+                t += &draw_op_node(op_item.op);
+            }).count();
+
+        self.op_chain.iter()
+            .map(|op_item| {
+                let op_id = opnode_id(op_item.op);
+                let output_id = node_id(op_item.output);
+                t += &format!("  {} -> {};\n", op_id, output_id);
+                for input in &op_item.inputs {
+                    let input_id = node_id(input);
+                    t += &format!("  {} -> {};\n", input_id, op_id);
+                }
+            }).count();
+        t += "}\n";
+        t
+    }
+}
+
 /// Main module most users will interact with.
 pub mod nn {
     use super::*;
@@ -566,6 +794,7 @@ pub mod nn {
     // bring the types into the nn module
     pub use super::Node;
     pub use super::RawNode;
+    pub use super::Graph;
 
     /// Creates a new variable node with the given value.
     /// Gradients will be computed for this node during backpropagation.
@@ -679,5 +908,23 @@ mod test {
 
         let c: Node = 1 + a;
         assert_eq!(c.value, 2.0);
+    }
+
+    #[test]
+    fn test_graph(){
+        let a = nn::variable(1);
+        let b = nn::variable(0);
+
+        let c: Node = 2*a;
+        let mut d: Node = b+1;
+        let y = c.pow(&d);
+
+        let y_val = y.value;
+
+        let mut g = Graph::from_trace(&y).unwrap();
+        d.set_value(0);     // alter middle node
+        g.forward();
+
+        assert_eq!(y.value, y_val);
     }
 }

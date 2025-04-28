@@ -1,3 +1,5 @@
+.vscode
+
 bin
 tmp
 compile_flags.txt
@@ -6,6 +8,7 @@ compile_flags.txt
 *.out
 *.exe
 *.bmp
+*.svg
 .DS_Store
 
 target
