@@ -1,8 +1,8 @@
 use mgrad::nn;
 
 fn main() {
-    let mut x = nn::variable(1);
-    let mut y = nn::variable(2);
+    let x = nn::variable(1);
+    let y = nn::variable(2);
     let m = &x + &y;
     let z = &m.sin() + &m.cos();
     z.abs().backward(1);
@@ -16,8 +16,7 @@ fn main() {
     // follow the graph to re-calculate z
     let z_value_record = z.value;
     let step = 1e-3;
-    x.set_value(x.value - step * x.grad);
-    y.set_value(y.value - step * y.grad);
+    g.apply_grad(-step);
     g.forward();
     assert!(z.value.abs() < z_value_record.abs());
 }

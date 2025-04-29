@@ -1,4 +1,4 @@
-A minimal automatic differentiation library. Just for fun...
+A minimal automatic scalar differentiation library. 
 
 All code are in a single file (`src/mgrad.rs`) to easily copy-paste into other projects.  
 ```rust
@@ -10,9 +10,7 @@ fn main() {
     let y = (x.pow(2) * y).ln();
     y.backward(1);
 
-    // y = ln(x^2 * (sin(x) + 1))
-    // dy/dx should be ~ 2.29341
-    println!("The gradient of y=ln(x^2 * (sin(x) + 1)) at x=1 is: {:?}", x.grad);
+    println!("dy/dx at x=1 is: {:?}", x.grad);
 }
 ```
 
