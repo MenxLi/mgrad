@@ -182,7 +182,7 @@ fn eval_step(
 }
 
 fn save_to_file(g: &nn::Graph, filename: &str) {
-    let graph_str = g.to_graphvis();
+    let graph_str = g.to_graphviz();
     let mut file = fs::File::create(filename).unwrap();
     use std::io::Write;
     file.write_all(graph_str.as_bytes()).unwrap();

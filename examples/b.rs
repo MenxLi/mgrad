@@ -10,7 +10,7 @@ fn main() {
     // Capture the graph up to z, 
     // and print it in graphviz format
     let mut g = nn::Graph::from_trace(&z).unwrap();
-    println!("{}", g.to_graphvis());
+    println!("{}", g.to_graphviz());
 
     // Perform gradient descent, 
     // follow the graph to re-calculate z

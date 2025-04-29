@@ -977,7 +977,7 @@ impl<'a> Graph<'a> {
         }
     }
 
-    pub fn to_graphvis(&self) -> String {
+    pub fn to_graphviz(&self) -> String {
         let mut t = String::new();
         t += "digraph G {\n";
         t += "  node [ shape=box, fixedsize=false, color=black, fontcolor=black, fontsize=12, fillcolor=white, style=filled ];\n";
