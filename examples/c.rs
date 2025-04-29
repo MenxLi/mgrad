@@ -4,6 +4,7 @@ use mgrad::nn_block;
 use std::fs;
 use rand::{self, Rng};
 use rand_distr::{Distribution, Normal};
+use image;
 
 fn aim_levelset(x: f32, y: f32) -> f32 {
     let rotate = |x: f32, y: f32, theta: f32| -> (f32, f32) {
@@ -152,6 +153,25 @@ fn eval_step(
     println!("[iter-{:06}] Acc: {}, Eval Loss: {}", iter, acc, batch_loss);
     graph.zero_grad();
 
+    // sample a 200 * 200 image from [-5, 5]
+    let mut img = image::GrayImage::new(200, 200);
+    for xi in 0..200 {
+        for yi in 0..200 {
+            let x = xi as f32 / 200.0 * 10.0 - 5.0;
+            let y = yi as f32 / 200.0 * 10.0 - 5.0;
+            model.inputs.get_mut(0).expect("Input 0 not found").set_value(x);
+            model.inputs.get_mut(1).expect("Input 1 not found").set_value(y);
+            graph.forward();
+            let pred = model.predict.value;
+            let pred = pred.clamp(0., 1.) * 255.0;
+            let pred = pred as u8;
+            img.put_pixel(xi, yi, image::Luma([pred as u8]));
+        }
+    }
+
+    // save to file 
+    let filename = format!("tmp/graph-{:06}.png", iter);
+    img.save(&filename).unwrap();
 }
 
 fn save_to_file(g: &nn::Graph, filename: &str) {
