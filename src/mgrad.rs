@@ -650,6 +650,82 @@ impl Node {
 }
 
 
+// ============================ Activation Functions ==========================
+pub mod functional {
+    use crate::mgrad::nn;
+    use crate::mgrad::OpNode;
+    use crate::nn::fp_t;
+
+    struct OpSigmoid (nn::Node);
+    struct OpTanh (nn::Node);
+    struct OpReLU (nn::Node);
+
+    impl OpNode for OpSigmoid {
+        fn inputs(&self) -> Vec<&nn::Node> {
+            vec![&self.0]
+        }
+        fn forward_value(&self) -> fp_t {
+            const E: nn::fp_t = std::f32::consts::E as nn::fp_t;
+            1. / (1. + E.powf(-self.0.value))
+        }
+        fn backward(&self, grad: fp_t) {
+            let sigmoid = self.forward_value();
+            self.0.backward(grad * sigmoid * (1. - sigmoid));
+        }
+    }
+
+    impl OpNode for OpTanh {
+        fn inputs(&self) -> Vec<&nn::Node> {
+            vec![&self.0]
+        }
+        fn forward_value(&self) -> fp_t {
+            self.0.value.tanh()
+        }
+        fn backward(&self, grad: fp_t) {
+            let tanh = self.forward_value();
+            self.0.backward(grad * (1. - tanh * tanh));
+        }
+    }
+
+    impl OpNode for OpReLU {
+        fn inputs(&self) -> Vec<&nn::Node> {
+            vec![&self.0]
+        }
+        fn forward_value(&self) -> fp_t {
+            self.0.value.max(0.)
+        }
+        fn backward(&self, grad: fp_t) {
+            if self.0.value >= 0. {
+                self.0.backward(grad);
+            } else {
+                self.0.backward(0.0);
+            }
+        }
+    }
+
+    pub fn sigmoid(x: &nn::Node) -> nn::Node {
+        let op = OpSigmoid(x.shadow());
+        let o = op.forward();
+        o.get_unsafe_mut().from = Some(Box::new(op));
+        o
+    }
+
+    pub fn tanh(x: &nn::Node) -> nn::Node {
+        let op = OpTanh(x.shadow());
+        let o = op.forward();
+        o.get_unsafe_mut().from = Some(Box::new(op));
+        o
+    }
+
+    pub fn relu(x: &nn::Node) -> nn::Node {
+        let op = OpReLU(x.shadow());
+        let o = op.forward();
+        o.get_unsafe_mut().from = Some(Box::new(op));
+        o
+    }
+}
+
+
 // ========================== Graph ==========================
 
 struct GraphOpItem<'a>{
@@ -867,6 +943,7 @@ pub mod nn {
     pub use super::RawNode;
     pub use super::Graph;
     pub use super::fp_t;
+    pub use super::functional;
 
     /// Creates a new variable node with the given value.
     /// Gradients will be computed for this node during backpropagation.

@@ -6,81 +6,6 @@ pub enum Activation {
     ReLU,
 }
 
-mod activation {
-    use crate::mgrad::nn;
-    use crate::mgrad::OpNode;
-    use crate::nn::fp_t;
-
-
-    struct OpSigmoid (nn::Node);
-    struct OpTanh (nn::Node);
-    struct OpReLU (nn::Node);
-
-    impl OpNode for OpSigmoid {
-        fn inputs(&self) -> Vec<&nn::Node> {
-            vec![&self.0]
-        }
-        fn forward_value(&self) -> fp_t {
-            const E: nn::fp_t = std::f32::consts::E as nn::fp_t;
-            1. / (1. + E.powf(-self.0.value))
-        }
-        fn backward(&self, grad: fp_t) {
-            let sigmoid = self.forward_value();
-            self.0.backward(grad * sigmoid * (1. - sigmoid));
-        }
-    }
-
-    impl OpNode for OpTanh {
-        fn inputs(&self) -> Vec<&nn::Node> {
-            vec![&self.0]
-        }
-        fn forward_value(&self) -> fp_t {
-            self.0.value.tanh()
-        }
-        fn backward(&self, grad: fp_t) {
-            let tanh = self.forward_value();
-            self.0.backward(grad * (1. - tanh * tanh));
-        }
-    }
-
-    impl OpNode for OpReLU {
-        fn inputs(&self) -> Vec<&nn::Node> {
-            vec![&self.0]
-        }
-        fn forward_value(&self) -> fp_t {
-            self.0.value.max(0.)
-        }
-        fn backward(&self, grad: fp_t) {
-            if self.0.value >= 0. {
-                self.0.backward(grad);
-            } else {
-                self.0.backward(0.0);
-            }
-        }
-    }
-
-    pub fn sigmoid(x: &nn::Node) -> nn::Node {
-        let op = OpSigmoid(x.shadow());
-        let o = op.forward();
-        o.get_unsafe_mut().from = Some(Box::new(op));
-        o
-    }
-
-    pub fn tanh(x: &nn::Node) -> nn::Node {
-        let op = OpTanh(x.shadow());
-        let o = op.forward();
-        o.get_unsafe_mut().from = Some(Box::new(op));
-        o
-    }
-
-    pub fn relu(x: &nn::Node) -> nn::Node {
-        let op = OpReLU(x.shadow());
-        let o = op.forward();
-        o.get_unsafe_mut().from = Some(Box::new(op));
-        o
-    }
-}
-
 pub struct LinearLayer {
     pub weights: Vec<nn::Node>, 
     pub bias: Vec<nn::Node>,
@@ -110,6 +35,7 @@ impl LinearLayer {
     }
 
     pub fn forward(&mut self, t: &Vec<nn::Node>) -> Vec<nn::Node> {
+        assert!(t.len() == self.in_dim, "Input dimension mismatch: expected {}, got {}", self.in_dim, t.len());
         let mut linear_out = Vec::with_capacity(self.out_dim);
         for i in 0..self.out_dim {
             linear_out.push(self.bias[i].shadow());
@@ -122,17 +48,17 @@ impl LinearLayer {
             match act {
                 Activation::Sigmoid => {
                     for i in 0..self.out_dim {
-                        out.push(activation::sigmoid(&linear_out[i]));
+                        out.push(nn::functional::sigmoid(&linear_out[i]));
                     }
                 }
                 Activation::Tanh => {
                     for i in 0..self.out_dim {
-                        out.push(activation::tanh(&linear_out[i]));
+                        out.push(nn::functional::tanh(&linear_out[i]));
                     }
                 }
                 Activation::ReLU => {
                     for i in 0..self.out_dim {
-                        out.push(activation::relu(&linear_out[i]));
+                        out.push(nn::functional::relu(&linear_out[i]));
                     }
                 }
             }
@@ -208,8 +134,8 @@ mod tests {
         let c = &c + (&c + 1);
         let c = &c + 1 + c + (-&a);
 
-        let d = &d + &d * 2 + activation::relu(&(&b + &a));
-        let d = &d + 3 * &d + activation::relu(&(&b -&a));
+        let d = &d + &d * 2 + nn::functional::relu(&(&b + &a));
+        let d = &d + 3 * &d + nn::functional::relu(&(&b -&a));
 
         let e: nn::Node = c - d;
         let f = e.pow(2);
