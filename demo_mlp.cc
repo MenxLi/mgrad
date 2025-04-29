@@ -72,7 +72,7 @@ Model create_model(nn::Graph& graph){
 
     auto prediciton = nn::NodeProxy(l4.output[0]);
     const fp_t eps = 1e-7;
-    auto bce_loss = -output_aim * (prediciton + eps).log() - (1 - output_aim) * (1 - prediciton + eps).log();
+    auto bce_loss = -(output_aim + eps) * (prediciton + eps).log() - (1 - output_aim + eps) * (1 - prediciton + eps).log();
 
     return Model{
         &graph,
