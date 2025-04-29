@@ -1092,4 +1092,32 @@ mod test {
         assert_close(y.grad, 10., 1e-3);
     }
 
+    #[test]
+    fn test_complex2(){
+
+        let a = nn::variable(-4);
+        let b = nn::variable(2);
+
+        let c = &a + &b;
+        let d = &a * &b + &b.pow(3);
+
+        let c = &c + (&c + 1);
+        let c = &c + 1 + c + (-&a);
+
+        let d = &d + &d * 2 + nn::functional::relu(&(&b + &a));
+        let d = &d + 3 * &d + nn::functional::relu(&(&b -&a));
+
+        let e: nn::Node = c - d;
+        let f = e.pow(2);
+
+        let g = &f / 2;
+        let g1: nn::Node = &g + 10 / f;
+
+        g1.backward(1);
+
+        assert_close(a.grad, 138.8338, 1e-3);
+        assert_close(b.grad, 645.5773, 1e-3);
+
+    }
+
 }

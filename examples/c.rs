@@ -39,20 +39,18 @@ fn get_samples<const N: usize>() -> [[nn::fp_t; 3]; N] {
     samples
 }
 
-macro_rules! get_layer {
-    ($i:expr, $o:expr, $act:expr) => {{
-        let mut rng = rand::rng();
-        let normal = Normal::new(0.0, 1.0).unwrap();
-        let mut layer = nn_block::linear($i, $o, $act);
-
-        for i in 0..$i*$o {
-            layer.weights[i].set_value(normal.sample(&mut rng));
+fn normal_init(layer: &mut nn_block::LinearLayer) {
+    let mut rng = rand::rng();
+    let normal = Normal::new(0.0, 1.0).unwrap();
+    let out_dim = layer.out_dim();
+    for i in 0..layer.in_dim() * out_dim {
+        layer.weights[i].set_value(normal.sample(&mut rng));
+    }
+    if let Some(ref mut bias) = layer.bias {
+        for i in 0..out_dim {
+            bias[i].set_value(0.0);
         }
-        for i in 0..$o {
-            layer.bias[i].set_value(normal.sample(&mut rng));
-        }
-        layer
-    }};
+    }
 }
 
 struct Model {
@@ -68,10 +66,15 @@ fn create_model() -> Model {
 
     const W: usize = 8;
 
-    let mut l1 = get_layer!(2, 2*W, "tanh");
-    let mut l2 = get_layer!(2*W, W, "relu");
-    let mut l3 = get_layer!(W, W, "relu");
-    let mut l4 = get_layer!(W, 1, "sigmoid");
+    let mut l1 = nn_block::LinearLayer::new(2, 2 * W).with_bias().with_activation(nn::functional::relu);
+    let mut l2 = nn_block::LinearLayer::new(2 * W, 2 * W).with_bias().with_activation(nn::functional::tanh);
+    let mut l3 = nn_block::LinearLayer::new(2 * W, W).with_bias().with_activation(nn::functional::relu);
+    let mut l4 = nn_block::LinearLayer::new(W, 1).with_bias().with_activation(nn::functional::sigmoid);
+
+    normal_init(&mut l1);
+    normal_init(&mut l2);
+    normal_init(&mut l3);
+    normal_init(&mut l4);
 
     let output = l1.forward(&inputs);
     let output = l2.forward(&output);
@@ -128,6 +131,11 @@ fn eval_step(
     model: &mut Model,
     iter: usize,
 ){
+    // create a tmp folder if not exists
+    if !std::path::Path::new("tmp").exists() {
+        std::fs::create_dir("tmp").unwrap();
+    }
+
     let mut batch_loss = 0.0;
     let mut acc = 0.0;
     for [x, y, z] in get_samples::<32>() {
