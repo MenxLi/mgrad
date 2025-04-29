@@ -1,8 +1,9 @@
 use mgrad::nn;
 use mgrad::nn::Graph;
 use mgrad::nn_block;
-use rand::{self, Rng};
 use std::fs;
+use rand::{self, Rng};
+use rand_distr::{Distribution, Normal};
 
 fn aim_levelset(x: f32, y: f32) -> f32 {
     let rotate = |x: f32, y: f32, theta: f32| -> (f32, f32) {
@@ -32,7 +33,7 @@ fn get_samples<const N: usize>() -> [[nn::fp_t; 3]; N] {
         let x = rng.sample(dist);
         let y = rng.sample(dist);
         let z = if aim_levelset(x, y) < 0.0 { 1.0 } else { 0.0 };
-        samples[i] = [x, y, 1.];
+        samples[i] = [x.into(), y.into(), z.into()];
     }
     samples
 }
@@ -40,14 +41,14 @@ fn get_samples<const N: usize>() -> [[nn::fp_t; 3]; N] {
 macro_rules! get_layer {
     ($i:expr, $o:expr, $act:expr) => {{
         let mut rng = rand::rng();
-        let dist = rand::distr::Uniform::new(-1.0, 1.0).unwrap();
+        let normal = Normal::new(0.0, 1.0).unwrap();
         let mut layer = nn_block::linear($i, $o, $act);
 
         for i in 0..$i*$o {
-            layer.weights[i].set_value(rng.sample(dist));
+            layer.weights[i].set_value(normal.sample(&mut rng));
         }
         for i in 0..$o {
-            layer.bias[i].set_value(rng.sample(dist));
+            layer.bias[i].set_value(normal.sample(&mut rng));
         }
         layer
     }};
@@ -78,11 +79,13 @@ fn create_model() -> Model {
 
     let predict = output.get(0).unwrap().shadow();
 
-    const EPS: f32 = 1e-5;
-    let loss = -(
-        ((&aim + EPS) * (&predict + EPS)).ln() + 
-        ((1. - &aim + EPS) as nn::Node * (1. - &predict + EPS) as nn::Node).ln()
-    );
+    // somehow bce loss won't work
+    // const EPS: nn::fp_t = 1e-2;
+    // let loss = -(
+    //     ((&aim + EPS) * (&predict + EPS)).ln() + 
+    //     ((1. - &aim + EPS) as nn::Node * (1. - &predict + EPS) as nn::Node).ln()
+    // );
+    let loss = (&predict - &aim).pow(2);
     Model {
         inputs,
         aim,
@@ -95,7 +98,6 @@ fn train_step(
     graph: &mut nn::Graph,
     model: &mut Model,
     n_iter: usize,
-    n_total: usize,
 ){
     const BATCH_SIZE: usize = 32;
     const LR: nn::fp_t = 1e-2;
@@ -110,14 +112,12 @@ fn train_step(
         model.loss.backward(1.0);
 
         batch_loss += model.loss.value;
+        graph.apply_grad(-1. * LR);
+        graph.zero_grad();
     }
-    batch_loss /= BATCH_SIZE as nn::fp_t;
-
-    graph.scale_grad(1. / n_total as nn::fp_t);
-    graph.apply_grad(-1. * LR);
-    graph.zero_grad();
 
     if (n_iter + 1) % (1e4 as usize) == 0 {
+        batch_loss /= BATCH_SIZE as nn::fp_t;
         println!("Loss: {}", batch_loss);
     }
 }
@@ -163,14 +163,14 @@ fn save_to_file(g: &nn::Graph, filename: &str) {
 
 
 fn main(){
-    const N_TOTAL_ITER: usize = 8e4 as usize;
+    const N_TOTAL_ITER: usize = 1e4 as usize;
 
     let mut model = create_model();
     let loss_shadow = model.loss.shadow();
     let mut graph = Graph::from_trace(&loss_shadow).unwrap();
 
     for i in 0..N_TOTAL_ITER {
-        train_step(&mut graph, &mut model, i, N_TOTAL_ITER);
+        train_step(&mut graph, &mut model, i);
         if i % (1e3 as usize) == 0 {
             eval_step(&mut graph, &mut model, i);
         }

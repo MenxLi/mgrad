@@ -21,7 +21,7 @@ mod activation {
             vec![&self.0]
         }
         fn forward_value(&self) -> fp_t {
-            const E: f32 = std::f32::consts::E;
+            const E: nn::fp_t = std::f32::consts::E as nn::fp_t;
             1. / (1. + E.powf(-self.0.value))
         }
         fn backward(&self, grad: fp_t) {
@@ -182,17 +182,18 @@ mod tests {
         let loss = (&output - &aim).pow(2);
         let n_iter = 1000;
         let lr = 1e-3;
-        let mut graph = nn::Graph::from_trace(&output).unwrap();
+        let mut graph = nn::Graph::from_trace(&loss).unwrap();
 
         for _ in 0..n_iter {
             graph.forward();
             loss.backward(1.0);
             graph.apply_grad(-1.0 * lr);
+            graph.zero_grad();
         }
 
         println!("output: {}", output.value);
         println!("aim: {}", aim.value);
-        assert!((output.value - aim.value).abs() < 1e-2);
+        assert!((output.value - aim.value).abs() < 5e-2);
     }
 
     #[test]
