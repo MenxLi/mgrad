@@ -986,4 +986,20 @@ mod test {
 
         assert_eq!(y.value, y_val);
     }
+
+    #[test]
+    fn test_complex1(){
+
+        let x = nn::variable(3);
+        let y = nn::variable(4);
+        let n4 = &x * &x;
+        let n5 = n4 * &y;
+        let n6 = &y +2;
+        let n7: Node = n5 + n6;
+        n7.backward(1.);
+
+        assert_close(x.grad, 24., 1e-3);
+        assert_close(y.grad, 10., 1e-3);
+    }
+
 }
