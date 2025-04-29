@@ -68,7 +68,7 @@ fn create_model() -> Model {
     let mut l1 = nn::Linear::new(2, 2 * W).with_bias().with_activation(nn::functional::relu);
     let mut l2 = nn::Linear::new(2 * W, 2 * W).with_bias().with_activation(nn::functional::tanh);
     let mut l3 = nn::Linear::new(2 * W, W).with_bias().with_activation(nn::functional::relu);
-    let mut l4 = nn::Linear::new(W, 1).with_bias().with_activation(nn::functional::sigmoid);
+    let mut l4 = nn::Linear::new(W, 1).with_activation(nn::functional::sigmoid);
 
     normal_init(&mut l1);
     normal_init(&mut l2);
@@ -82,8 +82,8 @@ fn create_model() -> Model {
 
     let predict = output.get(0).unwrap().shadow();
 
-    // somehow bce loss won't work
-    // const EPS: nn::fp_t = 1e-2;
+    // somehow bce-loss won't work...
+    // const EPS: nn::fp_t = 1e-3;
     // let loss = -(
     //     ((&aim + EPS) * (&predict + EPS)).ln() + 
     //     ((1. - &aim + EPS) as nn::Node * (1. - &predict + EPS) as nn::Node).ln()

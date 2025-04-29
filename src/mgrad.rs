@@ -105,6 +105,7 @@ pub trait OpNode {
     }
 }
 
+/// Basic building block of the computation graph, referring to the underlying `RawNode`.
 pub struct Node(Rc<RawNode>);
 impl Node {
 
@@ -355,6 +356,23 @@ impl OpNode for OpLog {
     fn backward(&self, grad: fp_t) {
         self.val.backward(grad / (self.val.value * self.base.value.ln()));
         self.base.backward(-grad * self.val.value.ln() / (self.base.value * (self.base.value.ln() * self.base.value.ln())));
+    }
+}
+
+struct OpLn {
+    a: Node,
+}
+impl OpNode for OpLn {
+    fn inputs(&self) -> Vec<&Node> {
+        vec![&self.a]
+    }
+
+    fn forward_value(&self) -> fp_t {
+        self.a.value.ln()
+    }
+
+    fn backward(&self, grad: fp_t) {
+        self.a.backward(grad / self.a.value);
     }
 }
 
@@ -618,7 +636,12 @@ impl Node {
     }
 
     pub fn ln(&self) -> Node {
-        self.log(&nn::constant(std::f32::consts::E))
+        let op = OpLn {
+            a: Node::clone(&self),
+        };
+        let o = op.forward();
+        o.get_unsafe_mut().from = Some(Box::new(op));
+        o
     }
 
     pub fn sin(&self) -> Node {
@@ -651,6 +674,8 @@ impl Node {
 
 
 // ============================ Activation Functions ==========================
+
+/// Some functions for activation.
 pub mod functional {
     use crate::mgrad::nn;
     use crate::mgrad::OpNode;
@@ -723,10 +748,36 @@ pub mod functional {
         o.get_unsafe_mut().from = Some(Box::new(op));
         o
     }
+
+    pub fn sin(x: &nn::Node) -> nn::Node {
+        x.sin()
+    }
+
+    pub fn cos(x: &nn::Node) -> nn::Node {
+        x.cos()
+    }
+
+    pub fn tan(x: &nn::Node) -> nn::Node {
+        x.tan()
+    }
 }
 
 // ============================ Linear layer ==========================
 
+/// Fully connected linear layer.
+/// 
+/// Example:
+/// ```rust
+/// use mgrad::nn;
+/// use mgrad::nn::Linear;
+/// 
+/// let mut l = Linear::new(2, 3).with_bias().with_activation(nn::functional::relu);
+/// let x = nn::constant(0.5);
+/// let y = nn::constant(1.0);
+/// let output = l.forward(&vec![x, y]);
+/// assert_eq!(output.len(), 3);
+/// ```
+/// 
 pub struct Linear {
     pub weights: Vec<nn::Node>, 
     pub bias: Option<Vec<nn::Node>>,
@@ -821,6 +872,9 @@ impl<'a> GraphOpItem<'a> {
         })
     }
 }
+
+/// Graph is a collection of operations and nodes traced from a given node.  
+/// For faster forward passes and gradient operations.
 pub struct Graph<'a> {
     op_chain: Vec<GraphOpItem<'a>>, 
     pub nodes: Vec<&'a Node>,
