@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
-type fp_t = f32;
+pub type fp_t = f32;
 
 pub trait Number {
     fn to_fp(self) -> fp_t;
@@ -170,6 +170,18 @@ impl Deref for Node {
     type Target = Rc<RawNode>;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+impl Clone for Node {
+    fn clone(&self) -> Self {
+        Node::from(
+            RawNode { 
+                from: None, 
+                value: self.value, 
+                grad: self.grad, 
+                requires_grad: self.requires_grad,
+            }
+        )
     }
 }
 impl Nodish for Node {
@@ -647,7 +659,8 @@ impl<'a> GraphOpItem<'a> {
     }
 }
 pub struct Graph<'a> {
-    op_chain: Vec<GraphOpItem<'a>>
+    op_chain: Vec<GraphOpItem<'a>>, 
+    pub nodes: Vec<&'a Node>,
 }
 
 impl<'a> Graph<'a> {
@@ -690,8 +703,22 @@ impl<'a> Graph<'a> {
             op_chain_final.push(op_item);
         }
 
+        // collect nodes
+        let mut nodes_hash: HashMap<usize, &'a Node> = HashMap::new();
+        for op_item in &op_chain_final {
+            nodes_hash.insert(op_item.output.address(), op_item.output);
+            for input in &op_item.inputs {
+                nodes_hash.insert(input.address(), input);
+            }
+        }
+        let mut nodes: Vec<&'a Node> = Vec::new();
+        for (_, node) in nodes_hash.iter() {
+            nodes.push(*node);
+        }
+
         Some(Graph{
             op_chain: op_chain_final,
+            nodes,
         })
     }
 
@@ -700,6 +727,36 @@ impl<'a> Graph<'a> {
     pub fn forward(&mut self) {
         for op_item in &mut self.op_chain {
             op_item.output.get_unsafe_mut().value = op_item.op.forward_value();
+        }
+    }
+
+    pub fn zero_grad(&mut self) {
+        for n in &self.nodes {
+            n.get_unsafe_mut().grad = 0.0;
+        }
+    }
+
+    pub fn scale_grad(&mut self, factor: fp_t) {
+        for n in &self.nodes {
+            n.get_unsafe_mut().grad *= factor;
+        }
+    }
+
+    /// Apply the gradients to the nodes in the graph by 
+    /// set the value to (value + factor*grad)
+    pub fn apply_grad(&mut self, factor: fp_t) {
+        for n in &self.nodes {
+            if n.requires_grad {
+                n.get_unsafe_mut().value += factor * n.grad;
+            }
+        }
+    }
+
+    pub fn clip_grad(&mut self, min: fp_t, max: fp_t) {
+        for n in &self.nodes {
+            if n.requires_grad {
+                n.get_unsafe_mut().grad = n.grad.clamp(min, max);
+            }
         }
     }
 
@@ -796,6 +853,7 @@ pub mod nn {
     pub use super::Node;
     pub use super::RawNode;
     pub use super::Graph;
+    pub use super::fp_t;
 
     /// Creates a new variable node with the given value.
     /// Gradients will be computed for this node during backpropagation.

@@ -10,3 +10,6 @@ license = "MIT"
 opt-level = 3
 
 [dependencies]
+
+[dev-dependencies]
+rand = "0.9.1"
