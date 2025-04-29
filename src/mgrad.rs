@@ -5,6 +5,7 @@
 use std::ops::{Deref, Add, Div, Mul, Sub, Neg};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use std::fmt;
 
 #[allow(non_camel_case_types)]
 pub type fp_t = f32;
@@ -165,6 +166,18 @@ impl Node {
         self.set_grad(0.0);
     }
 
+}
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        let n = self.raw();
+        f.debug_struct("Node")
+            .field("value", &n.value)
+            .field("grad", &n.grad)
+            .field("requires_grad", &n.requires_grad)
+            .field("op_fn", &n.from.as_ref().map(|op| op.name()))
+            .field("ptr", &n.address())
+            .finish()
+    }
 }
 impl Deref for Node {
     type Target = Rc<RawNode>;

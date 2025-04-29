@@ -51,10 +51,10 @@ mod activation {
             self.0.value.max(0.)
         }
         fn backward(&self, grad: fp_t) {
-            if self.0.value > 0. {
+            if self.0.value >= 0. {
                 self.0.backward(grad);
             } else {
-                self.0.backward(0.);
+                self.0.backward(0.0);
             }
         }
     }
@@ -171,7 +171,14 @@ mod tests {
         let input = vec![nn::constant(1.0), nn::constant(2.0)];
         let output = layer.forward(&input).get(0).unwrap().shadow();
 
-        let aim = nn::constant(2.0);
+        for i in &mut layer.weights.iter() {
+            i.get_unsafe_mut().value=1.;
+        }
+        for i in &mut layer.bias.iter() {
+            i.get_unsafe_mut().value=1.;
+        }
+
+        let aim = nn::constant(1.0);
         let loss = (&output - &aim).pow(2);
         let n_iter = 1000;
         let lr = 1e-3;
@@ -183,8 +190,9 @@ mod tests {
             graph.apply_grad(-1.0 * lr);
         }
 
-        assert!((output.value - aim.value).abs() < 1.+1e-2);
-        assert!((output.value - aim.value).abs() >= 1.);
+        println!("output: {}", output.value);
+        println!("aim: {}", aim.value);
+        assert!((output.value - aim.value).abs() < 1e-2);
     }
 
     #[test]

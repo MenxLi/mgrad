@@ -32,7 +32,7 @@ fn get_samples<const N: usize>() -> [[nn::fp_t; 3]; N] {
         let x = rng.sample(dist);
         let y = rng.sample(dist);
         let z = if aim_levelset(x, y) < 0.0 { 1.0 } else { 0.0 };
-        samples[i] = [x, y, z];
+        samples[i] = [x, y, 1.];
     }
     samples
 }
@@ -145,9 +145,20 @@ fn eval_step(
     }
     batch_loss /= 32 as nn::fp_t;
     acc /= 32 as nn::fp_t;
-    graph.zero_grad();
+
+    model.loss.backward(1);
+    save_to_file(graph, &format!("tmp/graph-{:06}.gv", iter));
 
     println!("[iter-{:06}] Acc: {}, Eval Loss: {}", iter, acc, batch_loss);
+    graph.zero_grad();
+
+}
+
+fn save_to_file(g: &nn::Graph, filename: &str) {
+    let graph_str = g.to_graphvis();
+    let mut file = fs::File::create(filename).unwrap();
+    use std::io::Write;
+    file.write_all(graph_str.as_bytes()).unwrap();
 }
 
 
@@ -157,13 +168,6 @@ fn main(){
     let mut model = create_model();
     let loss_shadow = model.loss.shadow();
     let mut graph = Graph::from_trace(&loss_shadow).unwrap();
-
-
-    let graph_str = graph.to_graphvis();
-    let mut file = fs::File::create("model.gv").unwrap();
-    use std::io::Write;
-    file.write_all(graph_str.as_bytes()).unwrap();
-    println!("Graph exported to model.gv");
 
     for i in 0..N_TOTAL_ITER {
         train_step(&mut graph, &mut model, i, N_TOTAL_ITER);
