@@ -1,9 +1,8 @@
 use mgrad::nn;
 use mgrad::nn::Graph;
-use mgrad::nn_block;
-use std::fs;
 use rand::{self, Rng};
 use rand_distr::{Distribution, Normal};
+use std::fs;
 use image;
 
 fn aim_levelset(x: f32, y: f32) -> f32 {
@@ -39,7 +38,7 @@ fn get_samples<const N: usize>() -> [[nn::fp_t; 3]; N] {
     samples
 }
 
-fn normal_init(layer: &mut nn_block::LinearLayer) {
+fn normal_init(layer: &mut nn::Linear) {
     let mut rng = rand::rng();
     let normal = Normal::new(0.0, 1.0).unwrap();
     let out_dim = layer.out_dim();
@@ -66,10 +65,10 @@ fn create_model() -> Model {
 
     const W: usize = 8;
 
-    let mut l1 = nn_block::LinearLayer::new(2, 2 * W).with_bias().with_activation(nn::functional::relu);
-    let mut l2 = nn_block::LinearLayer::new(2 * W, 2 * W).with_bias().with_activation(nn::functional::tanh);
-    let mut l3 = nn_block::LinearLayer::new(2 * W, W).with_bias().with_activation(nn::functional::relu);
-    let mut l4 = nn_block::LinearLayer::new(W, 1).with_bias().with_activation(nn::functional::sigmoid);
+    let mut l1 = nn::Linear::new(2, 2 * W).with_bias().with_activation(nn::functional::relu);
+    let mut l2 = nn::Linear::new(2 * W, 2 * W).with_bias().with_activation(nn::functional::tanh);
+    let mut l3 = nn::Linear::new(2 * W, W).with_bias().with_activation(nn::functional::relu);
+    let mut l4 = nn::Linear::new(W, 1).with_bias().with_activation(nn::functional::sigmoid);
 
     normal_init(&mut l1);
     normal_init(&mut l2);
