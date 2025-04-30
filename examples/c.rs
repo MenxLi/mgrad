@@ -1,3 +1,5 @@
+/// Train a simple MLP to learn oval shapes
+
 use mgrad::nn;
 use mgrad::nn::Graph;
 use rand::{self, Rng};
@@ -83,7 +85,7 @@ fn create_model() -> Model {
     let predict = output.get(0).unwrap().shadow();
 
     // somehow bce-loss won't work...
-    // const EPS: nn::fp_t = 1e-3;
+    // const EPS: nn::fp_t = 1e-4;
     // let loss = -(
     //     ((&aim + EPS) * (&predict + EPS)).ln() + 
     //     ((1. - &aim + EPS) as nn::Node * (1. - &predict + EPS) as nn::Node).ln()
@@ -115,13 +117,14 @@ fn train_step(
         model.loss.backward(1.0);
 
         batch_loss += model.loss.value;
-        graph.apply_grad(-1. * LR);
-        graph.zero_grad();
     }
+    graph.scale_grad(1.0 / BATCH_SIZE as nn::fp_t);
+    graph.apply_grad(-1. * LR);
+    graph.zero_grad();
 
     if (n_iter + 1) % (1e4 as usize) == 0 {
         batch_loss /= BATCH_SIZE as nn::fp_t;
-        println!("Loss: {}", batch_loss);
+        println!("Train Loss: {}", batch_loss);
     }
 }
 
@@ -190,7 +193,7 @@ fn save_to_file(g: &nn::Graph, filename: &str) {
 
 
 fn main(){
-    const N_TOTAL_ITER: usize = 1e4 as usize;
+    const N_TOTAL_ITER: usize = 5e4 as usize;
 
     let mut model = create_model();
     let loss_shadow = model.loss.shadow();
@@ -198,7 +201,7 @@ fn main(){
 
     for i in 0..N_TOTAL_ITER {
         train_step(&mut graph, &mut model, i);
-        if i % (1e3 as usize) == 0 {
+        if i % (5e3 as usize) == 0 {
             eval_step(&mut graph, &mut model, i);
         }
     }
