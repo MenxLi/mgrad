@@ -13,6 +13,9 @@ pub type fp_t = f32;
 pub trait Number {
     fn to_fp(self) -> fp_t;
 }
+
+/// Types that can be converted to a `Node`, 
+/// implemented for most of numeric primitives.
 pub trait Nodish {
     fn to_node(&self) -> Node;
 }
@@ -78,6 +81,7 @@ impl RawNode {
 }
 
 
+/// Should be implemented by operators in the computation graph.
 pub trait OpNode {
     fn name(&self) -> &'static str {
         let full_name = std::any::type_name::<Self>();
@@ -421,104 +425,114 @@ impl OpNode for OpTan {
     }
 }
 
-pub fn forward_op<T: OpNode + 'static>(op: T) -> Node {
-    let mut n = RawNode::new(op.forward_value());
-    n.from = Some(Box::new(op));
-    Node::from(n)
-}
-
 // ========================== Common Operations ==========================
 // These are primitive operations, 
 // many of them can be used to implement for 
 // borrowed references and owned values on operator overloading.
-pub fn add(a: &Node, b: &Node) -> Node {
-    let op = OpAdd {
-        a: Node::clone(a),
-        b: Node::clone(b),
-    };
-    forward_op(op)
-}
 
-pub fn sub(a: &Node, b: &Node) -> Node {
-    let op = OpSub {
-        a: Node::clone(a),
-        b: Node::clone(b),
-    };
-    forward_op(op)
-}
+/// Common primitive operations and helper functions for `OpNode`.
+pub mod ops {
+    use super::{Node, Nodish, OpNode, RawNode};
+    use super::{OpAdd, OpSub, OpMul, OpDiv, OpPow, OpNeg, OpAbs, OpLog, OpLn, OpSin, OpCos, OpTan};
 
-pub fn mul(a: &Node, b: &Node) -> Node {
-    let op = OpMul {
-        a: Node::clone(a),
-        b: Node::clone(b),
-    };
-    forward_op(op)
-}
+    /// OpNode only implements the `forward_value` function, 
+    /// call this function to create a new node and register the `OpNode` to the graph.
+    pub fn forward<T: OpNode + 'static>(op: T) -> Node {
+        let mut n = RawNode::new(op.forward_value());
+        n.from = Some(Box::new(op));
+        Node::from(n)
+    }
 
-pub fn div(a: &Node, b: &Node) -> Node {
-    let op = OpDiv {
-        a: Node::clone(a),
-        b: Node::clone(b),
-    };
-    forward_op(op)
-}
+    pub fn add(a: &Node, b: &Node) -> Node {
+        let op = OpAdd {
+            a: Node::clone(a),
+            b: Node::clone(b),
+        };
+        forward(op)
+    }
 
-pub fn neg(a: &Node) -> Node {
-    let op = OpNeg {
-        a: Node::clone(a),
-    };
-    forward_op(op)
-}
+    pub fn sub(a: &Node, b: &Node) -> Node {
+        let op = OpSub {
+            a: Node::clone(a),
+            b: Node::clone(b),
+        };
+        forward(op)
+    }
 
-pub fn pow(a: &Node, b: &Node) -> Node {
-    let op = OpPow {
-        a: Node::clone(a),
-        b: Node::clone(b),
-    };
-    forward_op(op)
-}
+    pub fn mul(a: &Node, b: &Node) -> Node {
+        let op = OpMul {
+            a: Node::clone(a),
+            b: Node::clone(b),
+        };
+        forward(op)
+    }
 
-pub fn abs(a: &Node) -> Node {
-    let op = OpAbs {
-        a: Node::clone(a),
-    };
-    forward_op(op)
-}
+    pub fn div(a: &Node, b: &Node) -> Node {
+        let op = OpDiv {
+            a: Node::clone(a),
+            b: Node::clone(b),
+        };
+        forward(op)
+    }
 
-pub fn log(a: &Node, base: impl Nodish) -> Node {
-    let op = OpLog {
-        base: base.to_node(),
-        val: Node::clone(a),
-    };
-    forward_op(op)
-}
+    pub fn neg(a: &Node) -> Node {
+        let op = OpNeg {
+            a: Node::clone(a),
+        };
+        forward(op)
+    }
 
-pub fn ln(a: &Node) -> Node {
-    let op = OpLn {
-        a: Node::clone(a),
-    };
-    forward_op(op)
-}
+    pub fn pow(a: &Node, b: &Node) -> Node {
+        let op = OpPow {
+            a: Node::clone(a),
+            b: Node::clone(b),
+        };
+        forward(op)
+    }
 
-pub fn sin(a: &Node) -> Node {
-    let op = OpSin {
-        a: Node::clone(a),
-    };
-    forward_op(op)
-}
+    pub fn abs(a: &Node) -> Node {
+        let op = OpAbs {
+            a: Node::clone(a),
+        };
+        forward(op)
+    }
 
-pub fn cos(a: &Node) -> Node {
-    let op = OpCos {
-        a: Node::clone(a),
-    };
-    forward_op(op)
-}
+    pub fn log(a: &Node, base: &Node) -> Node {
+        let op = OpLog {
+            base: base.to_node(),
+            val: Node::clone(a),
+        };
+        forward(op)
+    }
 
-pub fn tan(a: &Node) -> Node {
-    let op = OpTan {
-        a: Node::clone(a),
-    };
-    forward_op(op)
+    pub fn ln(a: &Node) -> Node {
+        let op = OpLn {
+            a: Node::clone(a),
+        };
+        forward(op)
+    }
+
+    pub fn sin(a: &Node) -> Node {
+        let op = OpSin {
+            a: Node::clone(a),
+        };
+        forward(op)
+    }
+
+    pub fn cos(a: &Node) -> Node {
+        let op = OpCos {
+            a: Node::clone(a),
+        };
+        forward(op)
+    }
+
+    pub fn tan(a: &Node) -> Node {
+        let op = OpTan {
+            a: Node::clone(a),
+        };
+        forward(op)
+    }
+
 }
 
 // ========================== Operator Overloading ==========================
@@ -527,25 +541,25 @@ macro_rules! impl_op_2 {
         impl $op for Node {
             type Output = Node;
             fn $name(self, other: Node) -> Self::Output {
-                $name_impl(&self, &other)
+                ops::$name_impl(&self, &other)
             }
         }
         impl $op for &Node {
             type Output = Node;
             fn $name(self, other: &Node) -> Self::Output {
-                $name_impl(self, other)
+                ops::$name_impl(self, other)
             }
         }
         impl $op<&Node> for Node {
             type Output = Node;
             fn $name(self, other: &Node) -> Self::Output {
-                $name_impl(&self, other)
+                ops::$name_impl(&self, other)
             }
         }
         impl $op<Node> for &Node {
             type Output = Node;
             fn $name(self, other: Node) -> Self::Output {
-                $name_impl(self, &other)
+                ops::$name_impl(self, &other)
             }
         }
     };
@@ -555,49 +569,49 @@ macro_rules! impl_op_num_2_t {
         impl $op<Node> for $t {
             type Output = Node;
             fn $name(self, other: Node) -> Self::Output {
-                $name_impl(&nn::constant(self), &other)
+                ops::$name_impl(&nn::constant(self), &other)
             }
         }
         impl $op<&Node> for $t {
             type Output = Node;
             fn $name(self, other: &Node) -> Self::Output {
-                $name_impl(&nn::constant(self), other)
+                ops::$name_impl(&nn::constant(self), other)
             }
         }
         impl $op<Node> for &$t {
             type Output = Node;
             fn $name(self, other: Node) -> Self::Output {
-                $name_impl(&nn::constant(*self), &other)
+                ops::$name_impl(&nn::constant(*self), &other)
             }
         }
         impl $op<&Node> for &$t {
             type Output = Node;
             fn $name(self, other: &Node) -> Self::Output {
-                $name_impl(&nn::constant(*self), other)
+                ops::$name_impl(&nn::constant(*self), other)
             }
         }
         impl $op<$t> for Node {
             type Output = Node;
             fn $name(self, other: $t) -> Self::Output {
-                $name_impl(&self, &nn::constant(other))
+                ops::$name_impl(&self, &nn::constant(other))
             }
         }
         impl $op<&$t> for Node {
             type Output = Node;
             fn $name(self, other: &$t) -> Self::Output {
-                $name_impl(&self, &nn::constant(*other))
+                ops::$name_impl(&self, &nn::constant(*other))
             }
         }
         impl $op<$t> for &Node {
             type Output = Node;
             fn $name(self, other: $t) -> Self::Output {
-                $name_impl(self, &nn::constant(other))
+                ops::$name_impl(self, &nn::constant(other))
             }
         }
         impl $op<&$t> for &Node {
             type Output = Node;
             fn $name(self, other: &$t) -> Self::Output {
-                $name_impl(self, &nn::constant(*other))
+                ops::$name_impl(self, &nn::constant(*other))
             }
         }
     };
@@ -636,43 +650,43 @@ impl_op_num_2!(Div, div, div);
 impl Neg for Node {
     type Output = Node;
     fn neg(self) -> Self::Output {
-        neg(&self)
+        ops::neg(&self)
     }
 }
 impl Neg for &Node {
     type Output = Node;
     fn neg(self) -> Self::Output {
-        neg(self)
+        ops::neg(self)
     }
 }
 
 impl Node {
     pub fn pow(&self, other: impl Nodish) -> Node {
-        pow(self, &other.to_node())
+        ops::pow(self, &other.to_node())
     }
 
     pub fn abs(&self) -> Node {
-        abs(self)
+        ops::abs(self)
     }
 
     pub fn log(&self, base: impl Nodish) -> Node {
-        log(self, base)
+        ops::log(self, &base.to_node())
     }
 
     pub fn ln(&self) -> Node {
-        ln(self)
+        ops::ln(self)
     }
 
     pub fn sin(&self) -> Node {
-        sin(self)
+        ops::sin(self)
     }
 
     pub fn cos(&self) -> Node {
-        cos(self)
+        ops::cos(self)
     }
 
     pub fn tan(&self) -> Node {
-        tan(self)
+        ops::tan(self)
     }
 }
 
@@ -684,7 +698,7 @@ pub mod functional {
     use super::nn;
     use super::OpNode;
     use super::fp_t;
-    use super::forward_op;
+    use super::ops::forward;
 
     struct OpSigmoid (nn::Node);
     struct OpTanh (nn::Node);
@@ -735,17 +749,17 @@ pub mod functional {
 
     pub fn sigmoid(x: &nn::Node) -> nn::Node {
         let op = OpSigmoid(x.shadow());
-        forward_op(op)
+        forward(op)
     }
 
     pub fn tanh(x: &nn::Node) -> nn::Node {
         let op = OpTanh(x.shadow());
-        forward_op(op)
+        forward(op)
     }
 
     pub fn relu(x: &nn::Node) -> nn::Node {
         let op = OpReLU(x.shadow());
-        forward_op(op)
+        forward(op)
     }
 
 }
@@ -1056,14 +1070,14 @@ pub mod nn {
     use super::*;
 
     // bring the types into the nn module
+    pub use super::ops;
     pub use super::Node;
     pub use super::RawNode;
     pub use super::Graph;
     pub use super::Linear;
     pub use super::fp_t;
     pub use super::functional;
-    pub use super::{OpNode, Nodish, forward_op};    // for register new ops
-    pub use super::{add, sub, mul, div, neg, pow, abs, log, ln, sin, cos, tan};
+    pub use super::{OpNode, Nodish};    // for register new ops
 
     /// Creates a new variable node with the given value.
     /// Gradients will be computed for this node during backpropagation.
